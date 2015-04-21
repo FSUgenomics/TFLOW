@@ -15,9 +15,9 @@ Then, for each component that can't be found:
 
 When every component (that you care about) reports "Found!":
     Create a project directory
-    Copy Desired Pipe Options File Template to Directory:
+    Copy desired pipe options file template to project directory:
     	Ex: Copy options.dat.Trinity_Pipe_Template to My_Project/options.dat)
-    Set Mandatory and Suggested Settings in Options File:
+    Set mandatory and suggested settings in options file:
     	Ex: is_paired_reads <True/False>
 	    label	    <tissue_name>
 	    BUSCO_type	    <vertebrata>
@@ -30,6 +30,13 @@ When every component (that you care about) reports "Found!":
         OR: "TFLOW_DIR/tflow.sh run --help"
 
 
+ --- Design ---
+The TFLOW pipeline is designed with several key features in mind
+    Easy accessability of assembly utilities
+    A smooth "Flow" of input/output data from one tool to the next
+    Automated analysis of results
+    Modular addition of new tools
+
  --- Operation ---
 TFLOW 0.9 has 6 modes:
     run	      	    Run Job/Pipe
@@ -39,13 +46,19 @@ TFLOW 0.9 has 6 modes:
     test	    Test Job/Pipe
     print_settings  Print Current TFLOW Settings
 
+TFLOW 0.9 has 3 Supported Pipes:
+    Trinity_Pipe         Trim Reads, Trinity-Assemble, CAP3-Assemble, CEGMA Analysis, and BUSCO Analysis
+    Trimmed_Trinity_Pipe Trinity-Assemble, CAP3-Assemble, CEGMA Analysis, and BUSCO Analysis
+    Analysis_Pipe	 CEGMA Analysis and BUSCO Analysis
 
- --- Design ---
-The TFLOW pipeline is designed with several key features in mind
-    Easy accessability of assembly utilities
-    A smooth "Flow" of input/output data from one tool to the next
-    Automated analysis of results
-    Modular addition of new tools
+TFLOW 0.9 has 6 Supported Pipes Segments:
+    Make_Read_Lists (0.9)    Simple Parser From Read Files to Read File Lists
+    Trimmomatic (v0.32)      Read Trimming Utilityad Output of Job/Pipe
+    Trinity (v20140717)      De-Novo Transcriptome Assembler
+    CAP3                     Sequence Assembler
+    CEGMA_Analysis (v2.2.29) Core Eukaryotic Gene Recapture Analysis via NCBI Blast
+    BUSCO_Analysis (v2.2.29) Benchmarking Gene Recapture Analysis via NCBI Blast
+
 
  --- Options ---
 The priority hierarchy of options is given by:
