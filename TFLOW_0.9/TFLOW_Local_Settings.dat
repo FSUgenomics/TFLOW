@@ -1,0 +1,20 @@
+#Local Settings for TFLOW Package. Set Absolute Executable Locations When Necessary.
+#Remove Prefix "#" Character to Use Setting
+#Example Location: /home/Programs/Trimmomatic-0.32/
+#OR Set Absolute Executable Paths
+#Example Executable Path: /home/Programs/Trimmomatic-0.32/trimmomatic-0.32.jar
+
+#EXAMPLE_LOCATION         /Example/Location/
+#TRIMMOMATIC_LOCATION	
+#TRINITY_LOCATION
+#CAP3_LOCATION	        
+#CEGMA_FILE
+#BUSCO_LOCATION
+#BLAST_LOCATION
+#MAKE_BLAST_DB_LOCATION
+
+#TRIMMOMATIC_EXEC
+#TRINITY_EXEC
+#CAP3_EXEC
+#BLAST_EXEC
+#MAKE_BLAST_DB_EXEC

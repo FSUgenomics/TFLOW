@@ -1,0 +1,226 @@
+#TFLOW Job Options
+#Options for TFLOW Job: Trinity_Pipe
+#Options File Priority: Command line arguments take higher priority than options file, 
+#     but options file overrides all other options, including pipe-defaults.
+# 
+#Options read as:
+#Key Parameter [Parameter2] [ParameterN...] #Option Comments
+#
+#job_type Trinity	#Job Type for TFLOW Run
+#ex_list item_1 item_2	#List of Generic Paramaters
+#
+#For Specific Job Settings, Read as:
+#Job.Key Parameter    	       	 #Parameter Comments
+#			 
+#Trinity.out_file Trinity.out	 #Set the "out_file" setting specficially for the Trinity Step
+
+
+# --- General Settings: ---
+
+# !!! Input Files !!!  
+# Input Read Files to Be Trimmed and Assembled with Trinity and CAP3.
+# Can be supplied here, but suggested to be supplied on the command line.
+
+#raw_reads file1.fq [file2.fq]		#Paired or Unpaired Raw Reads, Will Attempt to be Parsed 
+	   	    			#    if is_paired_reads = True
+#raw_left_reads file1.fq [file2.fq]	#Paired Left Raw Reads
+#right_reads file1.fq [file2.fq]	#Paired Right Raw Reads
+
+
+# !!! Settings That Must Be Supplied (or included in command line): !!! 
+job_type          Trinity_Pipe	#Job Type for TFLOW Run
+is_paired_reads   True		#Whether Input Reads are Paired-End
+read_type         fq		#Input Read Type: "fq" for .fastq[.gz], "fa" for .fasta[.gz],
+		  		#Note: "fq" required for trimming of reads with Trimmomatic.
+
+# Settings that Should be Supplied (or included in command line):
+#label	   	species_tissue_1	#If Labeling of Output Desired, Supply Label.
+#BUSCO_type	vertebrata		#Organism Type for Automated BUSCO Analysis, options: 
+		  			#    "vertebrata", "arthropoda", "fungi", "metazoa"
+#max_CPU	4			#Max Number of Processors to be Used by Segments
+#max_memory	10G			#Max Memory to to be Used by Segments (Include "G")
+
+# Optional Global Settings:
+#left_read_indicator	R1_	#Indicator of Left Reads, if Reads Not Supplied Separately
+#right_read_indicator	R2_	#Indicator of Right Reads, if Reads Not Supplied Separately
+#overwrite		False	#If True, Previously Completed Segments will be Overwritten
+#verbose		False	#If True, Provide More Verbose Output
+#write_analysis 	True	#If True, Results of mode: "analyze" for each step will be 
+				#    output to a file.
+#write_settings 	True	#If True, Settings for Each Step will be output to a file.
+#write_command 		True	#If True, Equivalent Shell Command for Each Step will be output 
+				#   to a file.
+#write_times	 	True	#If True, Job Timing Information for Each Step will be output to 
+				#    a file.
+#print_test_output	False	#If True, Print output of test commands for each section when 
+				#    using TFLOW "test" mode.
+
+#Illumina Left/Right Read Indicators
+#left_read_indicator R1_
+#right_read_indicator R2_
+#Trimmomatic Left/Right Read Indicators
+#left_read_indicator 1P_
+#right_read_indicator 2P_
+
+
+# --- Individual Pipe Segment Settings: --- 
+# Note: These settings should be accounted for in the default pipe-specific settings, but can be 
+# changed if desired.
+
+# -- Read Preparation Settings --
+#Make_Read_Lists.is_paired_reads	True
+#Make_Read_Lists.read_type		fq
+#Make_Read_Lists.raw_single_reads_list	raw_unpaired_reads_list
+#Make_Read_Lists.raw_left_reads_list	raw_left_reads_list
+#Make_Read_Lists.raw_right_reads_list	raw_right_reads_list
+#Make_Read_Lists.left_read_indicator	R1_
+#Make_Read_Lists.left_read_indicator	R2_
+#Make_Read_Lists.command_list		python2.7 [segments_location]/Make_Read_Lists.py
+#Make_Read_Lists.test_command		-h
+#Make_Read_Lists.out_file		Make_Read_Lists.out
+
+# -- Read Trimming Settings --
+#Trimmomatic.is_paired_reads		True
+#Trimmomatic.max_CPU			4
+#Trimmomatic.output_directory		Trimmed_Reads
+#Trimmomatic.single_reads_list		single_reads_list
+#Trimmomatic.left_reads_list		left_reads_list
+#Trimmomatic.right_reads_list		right_reads_list
+#Trimmomatic.include_unpaired_output	False
+#Trimmomatic.left_read_indicator	R1_
+#Trimmomatic.right_read_indicator	R2_
+#Trimmomatic.command_list		java -jar [program_executable]
+#Trimmomatic.out_file			Trimomatic.out
+
+# - Trimmomatic Settings - 
+# See Trimmomatic Manual for Advanced Settings Usage
+#Trimmomatic.adapter_trimming TruSeq3-PE-2.fa 1 30 10
+#Trimmomatic.leading_quality  30
+#Trimmomatic.trailing_quality 30
+#Trimmomatic.sliding_window   25 30
+#Trimmomatic.minimum_length   75
+
+
+# -- Trinity Settings --
+# - Standard Trinity Settings -
+#Trinity.is_paired_reads   True
+#Trinity.read_type	   fq
+#Trinity.max_memory   	   10G
+#Trinity.max_CPU      	   4
+#Trinity.output_dir	   Trinity_Assembly
+#Trinity.min_contig_length 200
+#Trinity.command_list	   [Trinity_Location]/Trinity
+#Trinity.test_command	   -help
+#Trinity.out_file	   Trinity.out
+
+# - Trinity Read Parsing Settings, Not Required in Pipe -
+# Read Parsing Settings (Trimmomatic)
+#Trinity.left_read_indicator':'1P',
+#Trinity.right_read_indicator':'2P',
+# Read Parsing Settings (Illumina)
+#Trinity.left_read_indicator':'_R1',
+#Trinity.right_read_indicator':'_R2',
+
+
+# -- CAP3 Settings --
+# - Standard CAP3 Settings -
+#CAP3.working_directory	   CAP3
+#CAP3.command_list	   [CAP3_location]/cap3
+#CAP3.out_file	   	   CAP3.out
+
+
+# -- CEGMA_Analysis Settings --
+#CEGMA_Analysis.working_directory	CEGMA_Analysis
+#CEGMA_Analysis.CEGMA_file	     	[CEGMA_File]
+#CEGMA_Analysis.copy_input_file	     	True
+#CEGMA_Analysis.max_CPU		     	4
+#CEGMA_Analysis.evalue		     	1e-5
+#CEGMA_Analysis.evalue_cutoff	     	1e-20
+#CEGMA_Analysis.blast_result_file	blast.out
+#CEGMA_Analysis.print_missing_genes  	False
+#CEGMA_Analysis.blast_command_list   	[blast_location]/blastx
+#CEGMA_Analysis.blast_db_command_list	[blast_location]/makeblastdb
+#CEGMA_Analysis.test_command		-h
+#CEGMA_Analysis.out_file		CEGMA_Analysis.out
+
+
+# -- BUSCO_Analysis Settings --
+#BUSCO_Analysis.working_directory	BUSCO_Analysis
+#BUSCO_Analysis.BUSCO_file	     	[BUSCO_File]
+#BUSCO_Analysis.BUSCO_type	     	vertebrata
+#BUSCO_Analysis.copy_input_file		True
+#BUSCO_Analysis.max_CPU		     	4
+#BUSCO_Analysis.evalue		     	1e-5
+#BUSCO_Analysis.evalue_cutoff	     	1e-20
+#BUSCO_Analysis.blast_result_file	blast.out
+#BUSCO_Analysis.print_missing_genes  	False
+#BUSCO_Analysis.blast_command_list   	[blast_location]/blastx
+#BUSCO_Analysis.blast_db_command_list	[blast_location]/makeblastdb
+#BUSCO_Analysis.test_command		-h
+#BUSCO_Analysis.out_file		BUSCO_Analysis.out
+
+
+
+# --- Advanced Individual Pipe Segment Settings: --- 
+# Note: These Settings Use Defaults in Respective Utilities, but can be changed if desired.
+
+# -- Trinity Advanced Options --
+# See Trinity Manual for Advanced Settings Usage
+# A Value of "FLAG" Indicates Flag Will Be Included in Command Line.
+# Values in Brackets: "[Value]" Must Be Replaced With the Correct Parameter
+#Trinity.--genome    	 	  [GENOME.FA]
+#Trinity.--jaccard_clip		  FLAG
+#Trinity.--SS_lib_type		  [STRING]
+#Trinity.--normalize_reads	  FLAG
+#Trinity.--full_cleanup		  FLAG
+#Trinity.--prep			  FLAG
+#Trinity.--full_cleanup_ET	  FLAG
+#Trinity.--no_cleanup		  FLAG
+#Trinity.--min_kmer_cov		  [INT]
+#Trinity.--inchworm_cpu		  [INT]
+#Trinity.--no_run_inchworm	  FLAG
+#Trinity.--max_reads_per_Graph	  [INT]
+#Trinity.--min_glue		  [INT]
+#Trinity.--no_run_chrysalis	  FLAG
+#Trinity.--no_run_quantifygraph	  FLAG
+#Trinity.--chrysalis_output	  [STRING]
+#Trinity.--no_bowtie		  FLAG
+#Trinity.--bfly_opts		  [STRING]
+#Trinity.--PasaFly		  FLAG
+#Trinity.--CuffFly		  FLAG
+#Trinity.--group_pairs_distance	  [INT]
+#Trinity.--path_reinforcement_distance	[INT]
+#Trinity.--no_triplet_lock	  FLAG
+#Trinity.--extended_lock	  FLAG
+#Trinity.--NO_EM_REDUCE		  FLAG
+#Trinity.--no_path_merging	  FLAG
+#Trinity.--min_per_id_same_path	  [INT]
+#Trinity.--max_diffs_same_path	  [INT]
+#Trinity.--max_internal_gap_same_path	[INT]
+#Trinity.--bflyHeapSpaceMax	  [STRING]
+#Trinity.--bflyHeapSpaceInit	  [STRING]
+#Trinity.--bflyGCThreads	  [INT]
+#Trinity.--bflyCPU		  [INT]
+#Trinity.--bflyCalculateCPU	  FLAG
+#Trinity.--no_run_butterfly	  FLAG
+#Trinity.--bfly_jar		  [STRING]
+#Trinity.--normalize_max_read_cov [INT]
+#Trinity.--normalize_by_read_set  FLAG
+#Trinity.--genome_guided_max_intron	[INT]
+#Trinity.--genome_guided_use_bam  	[STRING]
+#Trinity.--genome_guided_min_coverage	[INT]
+#Trinity.--genome_guided_min_reads_per_partition	[INT]
+#Trinity.--genome_guided_CPU		[INT]
+#Trinity.--genome_guided_sort_buffer	[STRING]
+#Trinity.--GMAP_CPU			[INT]
+#Trinity.--genome_guided_just_prep	FLAG'
+#Trinity.--grid_conf_file		[STRING]
+
+
+# - Optional CAP3 Settings, Not Used By Default - 
+# See CAP3 Manual for Advanced Settings Usage
+#CAP3.-a N
+#CAP3.-b N
+#CAP3.-c N
+#CAP3.-d N
+#...Pattern Continues, All Args of Form "-X N" supported.
