@@ -1,4 +1,4 @@
 #!/bin/sh
-python2.7 [TFLOW_EXEC] run --rel_input_analysis_file sequence_file.fasta > Analysis_Pipe.out &
+[TFLOW_Location]/tflow.sh run --rel_input_analysis_file sequence_file.fasta > Analysis_Pipe.out &
 echo $! > job.pid ; echo "Job Submitted In Background, PID: `cat job.pid`" ; echo ""
 

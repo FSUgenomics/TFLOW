@@ -48,12 +48,12 @@ steps['CAP3'] = {'working_directory':CAP3_DIR,
 steps['CEGMA_Analysis'] = {'rel_input_analysis_file':(os.path.join(CAP3_DIR, 
                                                                    'Trinity.fasta.cap.combined')),
                            'working_directory':'CEGMA_Analysis',
-                           'copy_input':True,
+                           'copy_input_file':True,
                            }
 
 steps['BUSCO_Analysis'] = {'BUSCO_type':'vertebrata',
                            'rel_input_analysis_file':(os.path.join(CAP3_DIR, 
                                                                    'Trinity.fasta.cap.combined')),
                            'working_directory':'BUSCO_Analysis',
-                           'copy_input':True,
+                           'copy_input_file':True,
                            }

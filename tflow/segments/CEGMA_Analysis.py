@@ -71,7 +71,7 @@ DEFAULT_SETTINGS = {'working_directory':'CEGMA_Analysis',
                     }
 
 REQUIRED_SETTINGS = ['blast_command_list', 'blast_db_command_list', 'working_directory', 
-                     'CEGMA_file', 'copy_input', 'evalue', 'max_CPU', 'blast_result_file',
+                     'CEGMA_file', 'copy_input_file', 'evalue', 'max_CPU', 'blast_result_file',
                      'evalue_cutoff', 'print_missing_genes', 'write_command', 'write_report']
 
 REQUIRED_ANALYSIS_SETTINGS = ['CEGMA_file', 'blast_result_file', 'evalue_cutoff', 

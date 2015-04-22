@@ -4,7 +4,6 @@
 #OR Set Absolute Executable Paths
 #Example Executable Path: /home/Programs/Trimmomatic-0.32/trimmomatic-0.32.jar
 
-#EXAMPLE_LOCATION         /Example/Location/
 #TRIMMOMATIC_LOCATION	
 #TRINITY_LOCATION
 #CAP3_LOCATION	        

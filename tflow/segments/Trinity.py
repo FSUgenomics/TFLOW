@@ -34,7 +34,7 @@ from ..util import (print_exit, print_error, print_warning, write_file, read_fil
 
 JOB_TYPE = 'Trinity'
 PROGRAM_URL = 'http://trinityrnaseq.github.io/'
-SEGMENT_FOR_VERSION = None
+SEGMENT_FOR_VERSION = 'trinityrnaseq_r20140717'
 COMMAND = TRINITY_EXEC
 COMMAND_LIST = [COMMAND]
 TEST_COMMAND = '-help'

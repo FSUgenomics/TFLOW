@@ -112,12 +112,9 @@ def parse_args():
                                help='Absolute Path to Input File for Analysis')
     analysis_args.add_argument('--BUSCO_type', action='store', default=None,
                                help='Organism Type for BUSCO Analysis.')
-
-
-    
-
-
-
+    analysis_args.add_argument('--copy_input_file', action='store', default=None, 
+                               type=flexible_boolean_string, help='Copy Source Input File Instead of Using Inplace.',
+                               choices=BOOL, metavar='BOOL')
 
     #parser.set_defaults()
 
@@ -171,7 +168,7 @@ def flow(options, check_done=False):
         else:
             print_except('For Job Type %s, No Output File Given.' % job_type)
 
-    if 'working_directory' in options:
+    if 'working_directory' in options and options['working_directory'] not in [None, 'None', 'none', 'N/A', 'n/a']:
         working_directory = options['working_directory']
         if out_file:
             out_file = os.path.join(working_directory, out_file)

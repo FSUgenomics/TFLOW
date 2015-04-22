@@ -1,4 +1,4 @@
 #!/bin/sh
-python2.7 [TFLOW_EXEC] run --raw_reads ./Data/*.gz > Trinity_Pipe.out &
+[TFLOW_LOCATION]/tflow.sh run --raw_reads ./Data/*.gz > Trinity_Pipe.out &
 echo $! > job.pid ; echo "Job Submitted In Background, PID: `cat job.pid`" ; echo ""
 

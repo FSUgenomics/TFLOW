@@ -1,0 +1,4 @@
+#!/bin/sh
+[TFLOW_Location]/tflow.sh run --relative_input_file ./sequences.fasta --rel_input_analysis_file ./sequences.fasta.cap.combined > CAP3_Pipe.out &
+echo $! > job.pid ; echo "Job Submitted In Background, PID: `cat job.pid`" ; echo ""
+

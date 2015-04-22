@@ -6,12 +6,6 @@
 #Version 0.9, 04/20/2015
 #Project URL: http://www.github.com/fsugenomics/tflow
 
-
-#!/usr/bin/env python
-#Cap3 Sequencing Tool Parameters
-#Dan Stribling
-#Version 1.0, 09/21/2014
-
 import os.path
 import sys
 import subprocess
@@ -38,7 +32,7 @@ else:
 
 
 JOB_TYPE = 'CAP3'
-PROGRAM_URL = 'http://doua.prabi.fr/software/cap3'
+PROGRAM_URL = 'http://seq.cs.iastate.edu/cap3.html'
 SEGMENT_FOR_VERSION = 'N/A'
 COMMAND = CAP3_EXEC
 COMMAND_LIST = [COMMAND]
@@ -182,10 +176,11 @@ def run(options):
     if not os.path.isfile(full_input_file):
         print_exit('Input File: %s Not Found.' % full_input_file)
 
-    print 'Copying Input File: %s to Working Directory: %s' % (input_file, 
-                                                               options['working_directory']) 
     working_input_file = os.path.join(options['working_directory'], input_file)
-    shutil.copyfile(full_input_file, working_input_file)
+    if not os.path.isfile(working_input_file):
+        print 'Copying Input File: %s to Working Directory: %s' % (input_file, 
+                                                                   options['working_directory']) 
+        shutil.copyfile(full_input_file, working_input_file)
 
     if not os.path.isfile(working_input_file):
         print_exit('Copying of File: %s to Name: %s Unsuccesful.' % (full_input_file, 

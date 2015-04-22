@@ -1,5 +1,6 @@
 TFLOWLocation=''
 
+#export PATH='$TFLOWLocation:$PATH'
 #export PYTHONPATH='$TFLOWLocation:$PYTHONPATH'
 
 alias tflow='$TFLOWLocation/tflow.sh'

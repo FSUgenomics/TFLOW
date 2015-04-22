@@ -1,0 +1,105 @@
+#TFLOW Job Options
+#Options for TFLOW Job: CAP3_Pipe
+#Options File Priority: Command line arguments take higher priority than options file, 
+#     but options file overrides all other options, including pipe-defaults.
+# 
+#Options read as:
+#Key Parameter [Parameter2] [ParameterN...] #Option Comments
+#
+#job_type Trinity	#Job Type for TFLOW Run
+#ex_list item_1 item_2	#List of Generic Paramaters
+#
+#For Specific Job Settings, Read as:
+#Job.Key Parameter    	       	 #Parameter Comments
+#			 
+#Trinity.out_file Trinity.out	 #Set the "out_file" setting specficially for the Trinity Step
+
+
+# --- General Settings: ---
+
+# !!! Input Files !!!  
+# Input Read Files to Be Trimmed and Assembled with Trinity and CAP3.
+# Can be supplied here, but suggested to be supplied on the command line.
+
+#absolute_input_file          [location/]sequences.fa	#Absolute Path to Sequence File for CAP3 Assembly
+#relative_input_file          sequences.fa		#Relative Path to Sequence File for CAP3 Assembly
+
+#absolute_input_analysis_file [location/]sequences.fa.cap.combined #Abs. Path to Output Sequence File for Analyses
+#rel_input_analysis_file      sequences.fa.cap.combined            #Rel. Path to Output Sequence File for Analyses
+
+# !!! Settings That Must Be Supplied (or included in command line): !!! 
+job_type          CAP3_Pipe	#Job Type for TFLOW Run
+
+# Settings that Should be Supplied (or included in command line):
+#label	   	species_tissue_1	#If Labeling of Output Desired, Supply Label.
+#BUSCO_type	vertebrata		#Organism Type for Automated BUSCO Analysis, options: 
+		  			#    "vertebrata", "arthropoda", "fungi", "metazoa"
+#max_CPU	4			#Max Number of Processors to be Used by Segments
+
+# Optional Global Settings:
+#overwrite		False	#If True, Previously Completed Segments will be Overwritten
+#verbose		False	#If True, Provide More Verbose Output
+#write_analysis 	True	#If True, Results of mode: "analyze" for each step will be 
+				#    output to a file.
+#write_settings 	True	#If True, Settings for Each Step will be output to a file.
+#write_command 		True	#If True, Equivalent Shell Command for Each Step will be output 
+				#   to a file.
+#write_times	 	True	#If True, Job Timing Information for Each Step will be output to 
+				#    a file.
+#print_test_output	False	#If True, Print output of test commands for each section when 
+				#    using TFLOW "test" mode.
+
+# --- Individual Pipe Segment Settings: --- 
+# Note: These settings should be accounted for in the default pipe-specific settings, but can be 
+# changed if desired.
+
+
+# -- CAP3 Settings --
+# - Standard CAP3 Settings -
+#CAP3.working_directory	   None
+#CAP3.command_list	   [CAP3_location]/cap3
+#CAP3.out_file	   	   CAP3.out
+
+
+# -- CEGMA_Analysis Settings --
+#CEGMA_Analysis.working_directory	CEGMA_Analysis
+#CEGMA_Analysis.CEGMA_file	     	[CEGMA_File]
+#CEGMA_Analysis.copy_input_file	     	False
+#CEGMA_Analysis.max_CPU		     	4
+#CEGMA_Analysis.evalue		     	1e-5
+#CEGMA_Analysis.evalue_cutoff	     	1e-20
+#CEGMA_Analysis.blast_result_file	blast.out
+#CEGMA_Analysis.print_missing_genes  	False
+#CEGMA_Analysis.blast_command_list   	[blast_location]/blastx
+#CEGMA_Analysis.blast_db_command_list	[blast_location]/makeblastdb
+#CEGMA_Analysis.test_command		-h
+#CEGMA_Analysis.out_file		CEGMA_Analysis.out
+
+
+# -- BUSCO_Analysis Settings --
+#BUSCO_Analysis.working_directory	BUSCO_Analysis
+#BUSCO_Analysis.BUSCO_file	     	[BUSCO_File]
+#BUSCO_Analysis.BUSCO_type	     	vertebrata
+#BUSCO_Analysis.copy_input_file		False
+#BUSCO_Analysis.max_CPU		     	4
+#BUSCO_Analysis.evalue		     	1e-5
+#BUSCO_Analysis.evalue_cutoff	     	1e-20
+#BUSCO_Analysis.blast_result_file	blast.out
+#BUSCO_Analysis.print_missing_genes  	False
+#BUSCO_Analysis.blast_command_list   	[blast_location]/blastx
+#BUSCO_Analysis.blast_db_command_list	[blast_location]/makeblastdb
+#BUSCO_Analysis.test_command		-h
+#BUSCO_Analysis.out_file		BUSCO_Analysis.out
+
+
+
+# --- Advanced Individual Pipe Segment Settings: --- 
+# Note: These Settings Use Defaults in Respective Utilities, but can be changed if desired.
+
+# - Optional CAP3 Settings, Not Used By Default - 
+# See CAP3 Manual for Advanced Settings Usage
+#CAP3.-a N
+#CAP3.-b N
+#CAP3.-c N
+#CAP3.-d N
+#...Pattern Continues, All Args of Form "-X N" supported.
