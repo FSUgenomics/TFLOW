@@ -13,6 +13,8 @@ import re
 from collections import OrderedDict
 from .util import print_except, SI_prefix, percent_string, is_FASTA, is_FASTQ
 
+
+#Fasta Database Class
 class FASTA_DB():
     def __init__(self):
         self.reset_data()
@@ -454,7 +456,7 @@ def check_N50(file_name):
     return True
 
 
-def check_N50_in_place(file_name, fail_exit=True, return_report=False):
+def check_N50_in_place(file_name, fail_exit=True, return_report=False, return_report_dict=False):
     analysis = ''
     if not os.path.isfile(file_name):
         print 'File %s Not Found, No Changes Made.' % file_name
@@ -579,15 +581,25 @@ def check_N50_in_place(file_name, fail_exit=True, return_report=False):
     analysis += 'Tab-Separated Results:\n'
     
 
-    report = '\t'.join(['Count', 'Len', 'Av.Len', 'SRange', 'ERange', 'Median', 'N50']) + '\n'
-    report += '\t'.join([str(x) for x in [counted_sequences, formatted_total_length, 
-                                           average_length, sequence_lengths[0], 
-                                           sequence_lengths[-1], median_length, n50_length]])
+    keys = ['Count', 'Len', 'Av.Len', 'SRange', 'ERange', 'Median', 'N50']
+    values = [str(x) for x in [counted_sequences, formatted_total_length, average_length, 
+                               sequence_lengths[0], sequence_lengths[-1], median_length, 
+                               n50_length]]
+
+
+    report_dict = dict(zip(keys, values))
+    report_dict['report_type'] = 'sequence'
+    report = '\t'.join(keys) + '\n'
+    report += '\t'.join(values) + '\n'
+
     analysis += report
                         
     print analysis
-    if return_report:
-        return analysis, report
+    if return_report or return_report_dict:
+        if return_report_dict:
+            return analysis, report_dict
+        else:
+            return analysis, report
     else:
         return analysis
 

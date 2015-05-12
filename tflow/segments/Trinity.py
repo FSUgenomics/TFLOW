@@ -12,10 +12,16 @@ import subprocess
 from collections import OrderedDict
 
 if __name__ == "__main__" or __package__ is None:
+    sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../../'))
     import tflow.segments
     __package__ = "tflow.segments"
 
 from .. import local_settings
+from .parser_class import OutputParser
+from ..fasta import check_N50_in_place
+from ..util import (print_exit, print_error, print_warning, write_file, write_report, 
+                    read_file_list, ensure_FASTQ_GZ, ensure_FASTA_GZ)
+
 if hasattr(local_settings, 'TRINITY_LOCATION'):
     TRINITY_LOCATION = local_settings.TRINITY_LOCATION
 else:
@@ -26,11 +32,6 @@ if hasattr(local_settings, 'TRINITY_EXEC'):
 else:
     TRINITY_EXEC = os.path.join(TRINITY_LOCATION, 'Trinity')
 
-
-from .parser_class import OutputParser
-from ..fasta import check_N50_in_place
-from ..util import (print_exit, print_error, print_warning, write_file, read_file_list, 
-                    ensure_FASTQ_GZ, ensure_FASTA_GZ)
 
 JOB_TYPE = 'Trinity'
 PROGRAM_URL = 'http://trinityrnaseq.github.io/'
@@ -175,7 +176,8 @@ class Parser(OutputParser):
 def check_done(options):
     parser = Parser()
     parser.out_file = options['out_file']
-    return parser.check_completion()
+    failure_exit = (options['mode'] in ['run', 'track'])
+    return parser.check_completion(failure_exit)
 
 def track(options):
     parser = Parser()
@@ -197,17 +199,18 @@ def analyze(options):
                       + 'Cannot Be Found.' )
         return ''
 
-    results = check_N50_in_place(full_out_sequence_file, fail_exit=False, return_report=True)
+    results = check_N50_in_place(full_out_sequence_file, fail_exit=False, 
+                                 return_report_dict=True)
     if isinstance(results, tuple):
-        analysis, report = results
+        analysis, report_dict = results
     else:
         analysis = results
-        report = None
+        report_dict = None
 
-    if options['write_report'] and report:
+    if options['write_report'] and report_dict:
         report_file = os.path.join(options['working_directory'],
                                    JOB_TYPE + '.report')
-        write_file(report_file, report)
+        write_report(report_file, report_dict)
 
     return analysis
 

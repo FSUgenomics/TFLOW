@@ -11,6 +11,6 @@
 #Project URL: http://www.github.com/fsugenomics/tflow
 
 TFLOW_DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
-export PYTHONPATH=$TFLOW_DIR:$PYTHONPATH
+#export PYTHONPATH=$TFLOW_DIR:$PYTHONPATH
 python2.7 $TFLOW_DIR/tflow/count_sequences.py "$@"
 

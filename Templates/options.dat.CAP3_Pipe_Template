@@ -21,11 +21,13 @@
 # Input Read Files to Be Trimmed and Assembled with Trinity and CAP3.
 # Can be supplied here, but suggested to be supplied on the command line.
 
-#absolute_input_file          [location/]sequences.fa	#Absolute Path to Sequence File for CAP3 Assembly
-#relative_input_file          sequences.fa		#Relative Path to Sequence File for CAP3 Assembly
+#absolute_input_file          [location/]sequences.fa	#Absolute Path to Input Sequence File
+#relative_input_file          sequences.fa		#Relative Path to Input Sequence File
 
-#absolute_input_analysis_file [location/]sequences.fa.cap.combined #Abs. Path to Output Sequence File for Analyses
-#rel_input_analysis_file      sequences.fa.cap.combined            #Rel. Path to Output Sequence File for Analyses
+#absolute_input_analysis_file [location/]sequences.fa.cap.combined #Abs. Path to Output Sequence 
+			                                           #    File for Analyses
+#rel_input_analysis_file      sequences.fa.cap.combined            #Rel. Path to Output Sequence 
+			                                           #    File for Analyses
 
 # !!! Settings That Must Be Supplied (or included in command line): !!! 
 job_type          CAP3_Pipe	#Job Type for TFLOW Run
@@ -59,7 +61,8 @@ job_type          CAP3_Pipe	#Job Type for TFLOW Run
 #CAP3.working_directory	   None
 #CAP3.command_list	   [CAP3_location]/cap3
 #CAP3.out_file	   	   CAP3.out
-
+#CAP3.connections_file	   connections.out
+#CAP3.combined_input_name  combined_input.fa
 
 # -- CEGMA_Analysis Settings --
 #CEGMA_Analysis.working_directory	CEGMA_Analysis
@@ -70,6 +73,7 @@ job_type          CAP3_Pipe	#Job Type for TFLOW Run
 #CEGMA_Analysis.evalue_cutoff	     	1e-20
 #CEGMA_Analysis.blast_result_file	blast.out
 #CEGMA_Analysis.print_missing_genes  	False
+#CEGMA_Analysis.print_matches           False
 #CEGMA_Analysis.blast_command_list   	[blast_location]/blastx
 #CEGMA_Analysis.blast_db_command_list	[blast_location]/makeblastdb
 #CEGMA_Analysis.test_command		-h
@@ -86,10 +90,14 @@ job_type          CAP3_Pipe	#Job Type for TFLOW Run
 #BUSCO_Analysis.evalue_cutoff	     	1e-20
 #BUSCO_Analysis.blast_result_file	blast.out
 #BUSCO_Analysis.print_missing_genes  	False
+#BUSCO_Analysis.print_matches           False
 #BUSCO_Analysis.blast_command_list   	[blast_location]/blastx
 #BUSCO_Analysis.blast_db_command_list	[blast_location]/makeblastdb
 #BUSCO_Analysis.test_command		-h
 #BUSCO_Analysis.out_file		BUSCO_Analysis.out
+
+# -- Package Settings --
+#Package.packaged_file_name	Final_Assembly.fa
 
 
 

@@ -12,10 +12,14 @@ import subprocess
 import shutil
 
 if __name__ == "__main__" or __package__ is None:
+    sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../../'))
     import tflow.segments
     __package__ = "tflow.segments"
 
 from .. import local_settings
+from .parser_class import OutputParser
+from ..util import print_exit, print_except, write_file, write_report, percent_string
+
 if hasattr(local_settings, 'CEGMA_FILE'):
     CEGMA_FILE = local_settings.CEGMA_FILE
 else:
@@ -32,11 +36,14 @@ if hasattr(local_settings, 'MAKE_BLAST_DB_LOCATION'):
 else:
     MAKE_BLAST_DB_LOCATION = ''
 
-from .parser_class import OutputParser
-from ..util import print_exit, print_except, write_file, percent_string
-
 JOB_TYPE = 'CEGMA_Analysis'
 PROGRAM_URL = 'http://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download'
+DATASET_DETAILS ='''Core Eukaryotic Genes Mapping Approach (CEGMA): Core Eukaryotic Genes Dataset
+Version:  Acquired 2015-04-22
+URL:      http://korflab.ucdavis.edu/datasets/cegma/
+Citation: Genis Parra, Keith Bradnam and Ian Korf. CEGMA: a pipeline to accurately annotate
+          core genes in eukaryotic genomes." Bioinformatics, 23: 1061-1067 (2007)
+'''
 SEGMENT_FOR_VERSION = '2.2.29'
 BLAST_COMMAND = os.path.join(BLAST_LOCATION, 'blastx')
 BLAST_COMMAND_LIST = [BLAST_COMMAND]
@@ -44,8 +51,8 @@ BLAST_DB_COMMAND = os.path.join(MAKE_BLAST_DB_LOCATION, 'makeblastdb')
 BLAST_DB_COMMAND_LIST = [BLAST_DB_COMMAND]
 TEST_COMMAND = '-h'
 OUT_FILE = 'CEGMA_Analysis.out'
-MILESTONES = ['CEGMA Analysis Done']
-TERMINAL_FLAGS = []
+MILESTONES = ['CEGMA Benchmarking Analysis Complete']
+TERMINAL_FLAGS = ['CEGMA Analysis Done']
 FAILURE_FLAGS = ['Exiting Early...',
                  'Traceback',
                  'Not Found']
@@ -54,9 +61,10 @@ DEFAULT_SETTINGS = {'working_directory':'CEGMA_Analysis',
                     'copy_input_file':True,
                     'max_CPU':'4',
                     'evalue':'1e-5',
-                    'evalue_cutoff':'1e-20',
+                    'evalue_cutoff': '1e-20',
                     'blast_result_file':'blast.out',
                     'print_missing_genes':False,
+                    'print_matches':False,
                     #TFLOW CEGMA_Analysis Settings
                     'blast_command':BLAST_COMMAND,
                     'blast_command_list':BLAST_COMMAND_LIST,
@@ -65,6 +73,7 @@ DEFAULT_SETTINGS = {'working_directory':'CEGMA_Analysis',
                     'test_command':TEST_COMMAND,
                     'program_URL':PROGRAM_URL,
                     'segment_for_version':SEGMENT_FOR_VERSION,
+                    'dataset_details':DATASET_DETAILS,
                     #TFLOW Writing Defaults, Used if Global Not Set
                     'write_report':True,
                     'write_command':True,
@@ -72,10 +81,11 @@ DEFAULT_SETTINGS = {'working_directory':'CEGMA_Analysis',
 
 REQUIRED_SETTINGS = ['blast_command_list', 'blast_db_command_list', 'working_directory', 
                      'CEGMA_file', 'copy_input_file', 'evalue', 'max_CPU', 'blast_result_file',
-                     'evalue_cutoff', 'print_missing_genes', 'write_command', 'write_report']
+                     'evalue_cutoff', 'print_missing_genes', 'write_command', 'write_report', 'print_matches']
 
 REQUIRED_ANALYSIS_SETTINGS = ['CEGMA_file', 'blast_result_file', 'evalue_cutoff', 
-                              'print_missing_genes', 'write_report' ]
+                              'working_directory', 'print_missing_genes', 'write_report', 
+                              'print_matches']
 
 class Parser(OutputParser):
     def set_local_defaults(self):
@@ -87,7 +97,8 @@ class Parser(OutputParser):
 def check_done(options):
     parser = Parser()
     parser.out_file = options['out_file']
-    return parser.check_completion()
+    failure_exit = (options['mode'] in ['run', 'track'])
+    return parser.check_completion(failure_exit)
 
 def track(options):
     parser = Parser()
@@ -129,18 +140,23 @@ def run(options):
         terminal_out, terminal_error = sys.stdout, sys.stderr
         sys.stdout, sys.stderr = out_file_stream, out_file_stream
 
+    #Ensure Required Settings in Options
     for required_option in REQUIRED_SETTINGS:
         if required_option not in options:
             print_exit('Required Option: %s for %s not given.' % (required_option, JOB_TYPE))
 
+    #Ensure A Type of Input File is Given
     if not any(x in options for x in ['absolute_input_analysis_file',
-                                      'rel_input_analysis_file']):
-        print_exit('Either absolute_input_analysis_file or rel_input_analysis_file'
-                   + ' paramater required.')
+                                      'rel_input_analysis_file',
+                                      'result_name_file']):
+        print_exit('Either absolute_input_analysis_file, rel_input_analysis_file, or'
+                   + ' result_name_file paramater required.')
 
+    #Ensure Working Directory Exists
     if not os.path.isdir(options['working_directory']):
         print_exit('Working Directory: %s Not Found.' % options['working_directory'])
 
+    #Assign Correct Input File Name
     if 'absolute_input_analysis_file' in options:
         full_input_file = options['absolute_input_analysis_file']
         input_file = os.path.basename(full_input_file)
@@ -150,9 +166,58 @@ def run(options):
                                        options['rel_input_analysis_file'])
         input_file = os.path.basename(options['rel_input_analysis_file'])
 
+    elif 'result_name_file' in options:
+        full_result_name_file = os.path.join(options['project_directory'],
+                                             options['result_name_file'])
+        if os.path.isfile(full_result_name_file):
+            print ('Reading Result Sequence File Name from Provided '
+                   + 'File: %s' % full_result_name_file )
+        else:
+            print_exit('Provided File: %s Containing' % full_result_name_file
+                       + ' Result Sequence File Name Not Found.')
+
+        rf = open(full_result_name_file, 'r')
+        full_input_file = rf.read().strip()
+        rf.close()
+
+        if os.path.isfile(full_input_file):
+            print 'Read Result Sequence File Name: %s' % full_input_file
+            print 'File Found!'
+            print ''
+        else:
+            print_exit('Cannot Find Read Result Sequence File: %s' % full_input_file)
+
+        input_file = os.path.basename(full_input_file)
+
+    #Ensure Input File Exists
     if not os.path.isfile(full_input_file):
         print_exit('Input File: %s Not Found.' % full_input_file)
 
+    #Print Dataset Details
+    if 'dataset_details' in options:
+        print 'Details on Benchmarking Dataset:'
+        print options['dataset_details']
+        print ''
+
+    #If CEGMA Sequence File is Zipped, Unzip it
+    if os.path.isfile(options['CEGMA_file'] +'.gz'):
+        print ('\nProvided CEGMA File: %s' % options['CEGMA_file']
+               + 'Found in Zipped Format: %s' % options['CEGMA_file'] + '.gz')
+        print 'Unzipping...'
+        print ''
+        process = subprocess.Popen(['gunzip', options['CEGMA_file'] +'.gz'], stdout=sys.stdout,
+                                   stderr=sys.stderr, cwd=options['working_directory'])
+        process.wait()
+        sys.stdout.flush()
+        print ''
+
+    #Ensure CEGMA Sequence File Exists
+    if os.path.isfile(options['CEGMA_file']):
+        print 'Provided CEGMA Sequence File Found: %s' % options['CEGMA_file']
+    else:
+        print_exit('Provided CEGMA Sequence File: %s Cannot Be Found.' % options['CEGMA_file'])
+
+    #If Selected, Copy Input File to Working Directory
     if options['copy_input_file']:
         print ('Copying Input File: %s' % input_file
                + ' to Working Directory: %s' % options['working_directory'])
@@ -169,11 +234,9 @@ def run(options):
 
 
     #Prepare Blast Database
-
-    db_command_list = options['blast_db_command_list'][:]
+    db_command_list = list(options['blast_db_command_list'])
     db_command_list += ['-in', options['CEGMA_file'], '-dbtype', 'prot', '-title', 'CEGMA',
                      '-out', 'CEGMA']
-
     db_command = ' '.join(db_command_list)
 
     if options['write_command']:
@@ -201,24 +264,22 @@ def run(options):
         process.kill()
         raise
 
-
-    #Perform BLAST
-
-    command_list = options['blast_command_list'][:]
+    #Prepare BLAST Sequence Comparison Command
+    command_list = list(options['blast_command_list'])
     command_list += ['-db', 'CEGMA', '-query', full_input_file, '-outfmt', '6', '-evalue',
                      options['evalue'], '-num_threads', options['max_CPU'], '-out', 
                      options['blast_result_file']]
     command = ' '.join(command_list)
 
+    #If Selected, Write Command to File
     if options['write_command']:
         command_file = os.path.join(options['working_directory'], 'CEGMA_tblastn.auto.sh')
         write_file(command_file, '#!/bin/sh\n' + command)
 
+    #Perform BLAST Sequence Comparisons
     print ''
     print 'Running Command:\n    ' + command
-
     sys.stdout.flush()
-
     try:
         process = subprocess.Popen(command_list, stdout=sys.stdout, stderr=sys.stderr,
                                    cwd=options['working_directory'])
@@ -239,26 +300,30 @@ def run(options):
     print ''
     analyze(options)
     print ''
-    print 'CEGMA Analysis Done'
+    print 'CEGMA Benchmarking Analysis Complete'
 
     if __name__ != '__main__' and options['is_pipe']:
-        sys.stdout = terminal_out
-        sys.stderr = terminal_error
+        sys.stdout, sys.stderr = terminal_out, terminal_error
         out_file_stream.close()
 
+#Analyze Results of Sequence Comparison
 def analyze(options):
     analysis = 'Analyzing CEMGA Recapture BLAST Result.\n\n'
 
+    #Ensure Required Settings in Options
     for required_option in REQUIRED_ANALYSIS_SETTINGS:
         if required_option not in options:
             print_exit('Required Option: %s for %s not given.' % (required_option, JOB_TYPE))
 
+    #Ensure Working Directory Exists
     if not os.path.isdir(options['working_directory']):
         print_exit('Working Directory: %s Not Found.' % options['working_directory'])
 
+    #Prepare File Names
     full_blast = os.path.join(options['working_directory'], options['blast_result_file'])
     full_cegma = options['CEGMA_file']
 
+    #Ensure Necessary Files Exists
     if not os.path.isfile(full_blast):
         print_exit('Blast Result File: %s Not Found.' % full_blast)
 
@@ -282,16 +347,27 @@ def analyze(options):
 
     cutoff_float = float(options['evalue_cutoff'])
 
+    #Read Blast File Outputs and Count Genes Found Over Threshold
     blast_file = open(full_blast, 'r')
-    for line in blast_file:
+    for (line_number, line) in enumerate(blast_file,start=1):
         split_line = line.split()
+        if not split_line:
+            print_exit('Blank Line Found in Blast Results File at Line Number %i' % line_number)
+        elif len(split_line) < 11:
+            print_exit([('Problem with formatting of line number %i ' % line_number
+                        + 'in blast results file: %s' % full_blast), 'Line:', line.strip()])
         sequence = split_line[0]
         gene = split_line[1].split('___')[-1].strip()
-        e_score = float(split_line[10])
+        e_score_string = split_line[10]
+        e_score = float(e_score_string)
 
+        #Mark Gene as Present if Hit Exists over Threshold Value
         if e_score <= cutoff_float:
+            if options['print_matches'] and not genes[gene]:
+                analysis += 'Match: %s %s %s\n' % (sequence, gene, e_score_string)
             genes[gene] = True
 
+    #Count Number of Found and Missing Genes
     found_gene_count = 0
     missing_genes = []
     for gene in genes:
@@ -299,14 +375,15 @@ def analyze(options):
             found_gene_count += 1
         else:
             missing_genes.append(gene)
-    
-    missing_gene_count = len(missing_genes)
+        missing_gene_count = len(missing_genes)
 
+    #Ensure that Found/Missing Genes Sums to Expected Total
     if missing_gene_count + found_gene_count != expected_gene_count:
         print_except('PROBLEM!, Found: %i + ' % found_gene_count
                      + 'Missing: %i Genes != Expected: %i' % (missing_gene_count,
                                                               expected_gene_count)) 
                                                                                   
+    #Report Results
     analysis += 'Genes Found: %i\n' % found_gene_count
     analysis += 'Genes Missing: %i\n' % missing_gene_count
     if options['print_missing_genes'] and missing_genes:
@@ -315,29 +392,24 @@ def analyze(options):
     percent = percent_string(found_gene_count, expected_gene_count)
     analysis += 'Percent CEGMA Genes Present: %s\n' % percent
 
-
-
     headers = ['Analys.', 'Cutoff', 'Expect.', 'Found', 'Missing', 'Total', 'Percent']
-    #formatted_header = [str(x).ljust(int(options['analysis_column_size'])) for x in headers]
-    formatted_header = [str(x) for x in headers]
+    data_grid = ['CEGMA', options['evalue_cutoff'], expected_gene_count, found_gene_count, 
+                 missing_gene_count, expected_gene_count, percent]
+    formatted_data = [str(x) for x in data_grid]
 
     analysis += '\n'
     analysis += 'Tab Separated Output:\n'
+    analysis += '\t'.join(headers) + '\n'
+    analysis += '\t'.join(formatted_data) + '\n'
 
-    report = '\t'.join(formatted_header) + '\n'
+    report_dict = dict(zip(headers, formatted_data))
+    report_dict['report_type'] = 'recapture'
 
-    data_grid = ['CEGMA', options['evalue_cutoff'], expected_gene_count, found_gene_count, 
-                 missing_gene_count, expected_gene_count, percent]
-    #formatted_data = [str(x).ljust(int(options['analysis_column_size'])) for x in data_grid]
-    formatted_data = [str(x) for x in data_grid]
-    report += '\t'.join(formatted_data) + '\n'
-
-    analysis += report
-
+    #If Selected, Write Analysis Report
     if options['write_report']:
         report_file = os.path.join(options['working_directory'],
                                    JOB_TYPE + '.report')
-        write_file(report_file, report)
+        write_report(report_file, report_dict)
 
     print analysis
     return analysis

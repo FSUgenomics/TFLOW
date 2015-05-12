@@ -7,7 +7,7 @@ Optional: Add TFLOW dir to your python path with: "export PYTHONPATH=[TFLOW_DIR]
 (Replacing [TFLOW_DIR] with absolute path to TFLOW Directory Location)
 
 Run: "[TFLOW_DIR]/test_TFLOW_setup.sh"
-(Equivalent to "[TFLOW_DIR]/tflow.sh test -t Trinity_Pipe")
+(Equivalent to "[TFLOW_DIR]/tflow.sh test -t Test_Pipe")
 
 Then, for each component that can't be found:
     Install (if not already)
@@ -56,21 +56,24 @@ TFLOW 0.9.1 has 6 modes:
     test	    Test Job/Pipe
     print_settings  Print Current TFLOW Settings
 
-TFLOW 0.9.1 has 4 Supported Pipes:
+TFLOW 0.9.1 has 5 Supported Pipes:
     Trinity_Pipe         Trim Reads, Trinity-Assemble, CAP3-Assemble, CEGMA Analysis, 
                              and BUSCO Analysis
     Trimmed_Trinity_Pipe Trinity-Assemble, CAP3-Assemble, CEGMA Analysis, and BUSCO Analysis
     CAP3_Pipe	 	 CAP3-Assemble, CEGMA Analysis, and BUSCO Analysis
-    Analysis_Pipe	 CEGMA Analysis and BUSCO Analysis
+    Analysis_Pipe	 Stat_Analysis, CEGMA Analysis and BUSCO Analysis
+    Test_Pipe		 Non-Functional Pipe for Testing All Supported Segments
 
-TFLOW 0.9.1 has 6 Supported Pipes Segments:
-    Make_Read_Lists (0.9)    Simple Parser From Read Files to Read File Lists
+TFLOW 0.9.1 has 8 Supported Pipes Segments:
+    Make_Read_Lists (v0.9)   Simple Parser From Read Files to Read File Lists
     Trimmomatic (v0.32)      Read Trimming Utilityad Output of Job/Pipe
     Trinity (v20140717)      De-Novo Transcriptome Assembler
     CAP3                     Sequence Assembler
+    Stat_Analysis (v0.9)     Perform Statistical Analysis on FASTA File Sequences
     CEGMA_Analysis (v2.2.29) Core Eukaryotic Gene Recapture Analysis via NCBI Blast
     BUSCO_Analysis (v2.2.29) Benchmarking Gene Recapture Analysis via NCBI Blast
-
+    Package (v0.9)  	     Copy and Zip Final Sequence File Result
+    Summary (v0.9)  	     Summarize Pipe Results
 
  --- External Components ---
 Components used for Pipe Segments. Newer versions of components are ideally also supported.
@@ -132,17 +135,25 @@ Datasets used for Gene Recapture Analysis.
 
  --- Options ---
 The priority hierarchy of options is given by:
-Command Line > Options File > Global Defaults (Ideally Shouldn't Conflict) > Pipe Settings File 
-     > Segment Defaults  
+    Pipe Settings File > Command Line > Options File > Global Defaults > Segment Defaults  
 
 
 --- Version History ---
-2015-??-??, V.0.9.1
-    Minor Bug Fixes
-    Added CAP3 Assembly Pipe: CAP3_Pipe
-    Added CAP3_Pipe Job Templates
-    Added Significantly More Detail to README.txt
+2015-05-12, V.0.9.1
+    Added Stat_Analysis Segment
+    Added Package Segment
+    Added Test_Pipe Testing Pipeline
+    Separated Pipes and Segments Into tflow/pipes and tflow/segments, Respectively
+    Added Unpaired Read Trimming Mode
+    Added Significantly More Code Commenting to Segments: BUSCO_Analysis, and CEGMA_Analysis
+    Added Summary Module
+    Added Warning When User-Supplied Setting is Overridden by Pipe Setting
+    Fixed Trinity_Pipe Settings that Overrode BUSCO Tissue Type Selection
     Added test_TFLOW_setup.sh Convenience Script
+    Added Significantly More Detail to README.txt
+    Added CAP3_Pipe Job Templates
+    Added CAP3 Assembly Pipe: CAP3_Pipe
+    Minor Bug Fixes
 
 2015-04-20, V.0.9.0
     Initial Beta Release

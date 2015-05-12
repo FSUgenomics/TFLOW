@@ -2,3 +2,11 @@
 [TFLOW_Location]/tflow.sh run --relative_input_file ./sequences.fasta --rel_input_analysis_file ./sequences.fasta.cap.combined > CAP3_Pipe.out &
 echo $! > job.pid ; echo "Job Submitted In Background, PID: `cat job.pid`" ; echo ""
 
+#Other Input Options:
+#[TFLOW_Location]/tflow.sh run --absolute_input_file home/project/sequences.fasta --rel_input_analysis_file ./sequences.fasta.cap.combined > CAP3_Pipe.out &
+
+#[TFLOW_Location]/tflow.sh run --relative_input_files ./sequences1.fasta ./sequences2.fasta [...sequences3.fasta] --rel_input_analysis_file ./combined_input.fa.cap.combined > CAP3_Pipe.out &
+
+#[TFLOW_Location]/tflow.sh run --absolute_input_files home/project/sequences1.fasta home/project/sequences2.fasta [...sequences3.fasta] --rel_input_analysis_file ./combined_input.fa.cap.combined > CAP3_Pipe.out &
+
+

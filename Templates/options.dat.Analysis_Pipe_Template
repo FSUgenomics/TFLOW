@@ -61,6 +61,7 @@ BUSCO_type     vertebrata	     #Organism Type for Automated BUSCO Analysis, opti
 #CEGMA_Analysis.evalue_cutoff	     	1e-20
 #CEGMA_Analysis.blast_result_file	blast.out
 #CEGMA_Analysis.print_missing_genes  	False
+#CEGMA_Analysis.print_matches		False
 #CEGMA_Analysis.blast_command_list   	[blast_location]/blastx
 #CEGMA_Analysis.blast_db_command_list	[blast_location]/makeblastdb
 #CEGMA_Analysis.test_command		-h
@@ -77,6 +78,7 @@ BUSCO_type     vertebrata	     #Organism Type for Automated BUSCO Analysis, opti
 #BUSCO_Analysis.evalue_cutoff	     	1e-20
 #BUSCO_Analysis.blast_result_file	blast.out
 #BUSCO_Analysis.print_missing_genes  	False
+#BUSCO_Analysis.print_matches		False
 #BUSCO_Analysis.blast_command_list   	[blast_location]/blastx
 #BUSCO_Analysis.blast_db_command_list	[blast_location]/makeblastdb
 #BUSCO_Analysis.test_command		-h

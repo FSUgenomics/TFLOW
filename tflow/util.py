@@ -24,6 +24,7 @@ DEFAULT_SETTINGS = {'TFLOW_Version':'0.9',
                     'write_settings':True,
                     'write_command':True,
                     'write_times':True,
+                    'write_report':True,
                     'is_pipe':False,
                     'verbose':False,
                     'overwrite':False,
@@ -61,6 +62,8 @@ def print_error(message, exit_code=-1):
         sys.exit(exit_code)
 
 def print_warning(message):
+    import time
+    time.sleep(0.2)
     if isinstance(message, list):
         for piece in message:
             print >> sys.stderr, 'WARNING:', piece
@@ -97,10 +100,105 @@ def write_date_time(name, start=None):
 
     return now_time
 
+SEQUENCE_REPORT_SEPARATOR = '\t'
+SEQUENCE_REPORT_NULL_CHR = '-'
+REPORT_TYPES = {'sequence':'SEQUENCE FILE REPORT', 'recapture':'GENE RECAPTURE REPORT',
+                'unknown':'UNKNOWN REPORT TYPE'}
+SEQUENCE_REPORT_HEADERS = ['Count', 'Len', 'Av.Len', 'SRange', 'ERange', 'Median', 'N50']
+RECAPTURE_REPORT_HEADERS = ['Analys.', 'Cutoff', 'Expect.', 'Found', 'Missing', 'Total', 
+                            'Percent']
 
+def write_report(file_name, report, separator=SEQUENCE_REPORT_SEPARATOR):
+    if isinstance(report, str):
+        write_file(file_name, report)
+        return
+
+    if 'report_type' in report and report['report_type'] in REPORT_TYPES:
+        report_type = report['report_type']
+    else:
+        report_type = 'unknown'
+
+    report_type_string = REPORT_TYPES[report_type]
+
+    if report_type == 'sequence':
+        headers = SEQUENCE_REPORT_HEADERS
+
+    elif report_type == 'recapture':
+        headers = RECAPTURE_REPORT_HEADERS
+
+    else:
+        headers = sorted(report.keys())
+
+    f = open(file_name, 'w')
+    f.write(report_type_string + '\n')
+    f.write(separator.join(headers) + '\n')
+    data_list = []
+    for header in headers:
+        if header in report:
+            data_list.append(report[header])
+        else:
+            data_list.append(SEQUENCE_REPORT_NULL_CHR)
+    f.write(separator.join(data_list) + '\n')
+    additional_headers = []
+    for key in report.keys():
+        if key not in (headers + ['report_type']):
+            additional_headers.append(key)
+
+    if additional_headers:
+        f.write('\nAdditional Information:\n')
+        f.write(separator.join(additional_headers) + '\n')
+        f.write(separator.join([report[key] for key in additional_headers]) + '\n')
+    f.close()
+
+def read_report(report, separator=SEQUENCE_REPORT_SEPARATOR):
+    split_report = report.splitlines() 
+    if len(split_report) not in [2,3]:
+        print_warning('Report Not Formatted Correctly, %i lines detected' % len(split_report))
+        return ('N/A', 'N/A', 'N/A')
+
+    if len(split_report) == 2:
+        report_type = 'UNKNOWN REPORT TYPE'
+        header = split_report[0]
+        data = split_report[1]
+
+    elif len(split_report) == 3:
+        report_type = split_report[0]
+        header = split_report[1]
+        data = split_report[2]
+    
+    return report_type, header, data
+
+#Takes as input a list of tuples with values:
+# report = (report_name, report_type, header, data)
+def combine_report(reports, separator=SEQUENCE_REPORT_SEPARATOR):
+    summary_report = ''
+    last_report_type = None
+    last_header = None
+
+    for report_name, report_type, header, data in reports:
+        if report_type != last_report_type:
+            summary_report += '\n' + report_type + 'S\n'
+            summary_report += 'Report' + SEQUENCE_REPORT_SEPARATOR + header + '\n'
+            last_report_type = report_type
+            last_header = header
+        elif header != last_header:
+            summary_report += '\nReport' + SEQUENCE_REPORT_SEPARATOR + header + '\n'
+            last_header = header
+        summary_report += report_name[:7] + SEQUENCE_REPORT_SEPARATOR + data + '\n'
+
+    summary_report = summary_report.lstrip()
+    return summary_report
 
 
 # --- Reading Functions ---
+
+# - Read a File
+def read_file(file_name):
+    f = open(file_name, 'r')
+    contents = f.read().strip()
+    f.close()
+    return contents
+
 
 # - Read a List From a File
 def read_file_list(file_name):

@@ -15,6 +15,7 @@ import argparse
 from copy import deepcopy
 
 if __name__ == "__main__" and __package__ is None:
+    sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../'))
     import tflow
     __package__ = "tflow"
 
@@ -22,7 +23,7 @@ from .util import (get_file_settings, print_warning, print_except, print_multi, 
                    write_file, print_settings, write_settings, write_date_time, lowercase, 
                    flexible_boolean_string, BOOL, FLEXIBLE_BOOL, ACTION_NAMES, DEFAULT_SETTINGS)
 
-MODES = ['track', 'analyze', 'run', 'read', 'test', 'print_settings']
+MODES = ['track', 'analyze', 'run', 'read', 'test', 'stop', 'print_settings']
 NULL_OUT_FILES = ['N/A', 'n/a', 'NA', 'na', 'None', 'none', None, '']
 READ_TYPES = ['fq', 'fa']
 JOB_TYPES = []
@@ -102,6 +103,11 @@ def parse_args():
                                help='Input File for CAP3 Assembly, Relative to Project Directory')
     assembly_args.add_argument('--absolute_input_file', action='store', default=None,
                                help='Absolute Path to Input File for CAP3 Assembly')
+    assembly_args.add_argument('--relative_input_files', action='store', nargs = '*',
+                               default=None, help=('Input Files for CAP3 Assembly, Relative to'
+                                                   + ' Project Directory'))
+    assembly_args.add_argument('--absolute_input_files', action='store', nargs='*', default=None,
+                               help='Absolute Path to Input Files for CAP3 Assembly')
 
     analysis_args = parser.add_argument_group('Analysis Args', 
                                               'Arguments for Analysis of Sequence Files')
@@ -141,7 +147,9 @@ def get_settings():
             sys.exit(1)           
 
     segments_module = __import__('tflow.segments', fromlist=[settings['job_type']])
-    if not hasattr(segments_module, settings['job_type']):
+    pipes_module = __import__('tflow.pipes', fromlist=[settings['job_type']])
+    if (not hasattr(segments_module, settings['job_type'])
+        and not hasattr(pipes_module, settings['job_type'])):
         print_exit('Job Type: %s Not Found.' % settings['job_type'], 1)
     
     return settings
@@ -292,12 +300,12 @@ def segment(options):
     if job_type in options:
         job_dict = options[job_type]
         for setting in job_dict:
-            if setting in options and options['verbose']:               
-                print_warning('Option: %s with' % setting
-                              + ' value: %s Being Overridden' % options[setting]
-                              + ' for job %s' % job_type
+            if setting in options:               
+                print_warning('Option:  "%s"  with' % setting
+                              + ' value: "%s"  Being Overridden' % options[setting]
+                              + ' for job  "%s" ' % job_type
                               + ' by Job-Specific Options File'
-                              + ' Setting: %s' % job_dict[setting])
+                              + ' Setting:  "%s"' % job_dict[setting])
 
             options[setting] = job_dict[setting]
 
@@ -333,7 +341,7 @@ def segment(options):
             flow(options)
             print '    %s Analysis Complete.' % job_type
 
-    elif options['mode'] in ['test', 'read']:
+    elif options['mode'] in ['test', 'read', 'stop']:
         flow(options)
 
     else:
@@ -344,7 +352,7 @@ def segment(options):
 
 def manifold(options):
     #Get Segment Pipe Module Object
-    segments_module = __import__('tflow.segments', fromlist=[options['job_type']])
+    segments_module = __import__('tflow.pipes', fromlist=[options['job_type']])
     module = getattr(segments_module, options['job_type'])
   
     #Get Steps from Pipe Module
@@ -364,6 +372,8 @@ def manifold(options):
         if not hasattr(step_module, step):
             print_exit('Job Type: %s Not Found.' % step, 1)
 
+    #Add List of steps to options.
+        options['pipe_steps'] = list(pipe_steps)
 
     #If Running, Write Timing and Settings
     if options['mode'] == 'run':
@@ -380,7 +390,7 @@ def manifold(options):
     #Perform Each Step
     for step in pipe_steps:
         step_run_options = deepcopy(options)
-        step_options = pipe_steps[step]
+        pipe_step_options = pipe_steps[step]
 
         #Remove Step Settings from Segment Settings
         for item in step_run_options.keys():
@@ -391,26 +401,30 @@ def manifold(options):
         if step in options:
             step_dict = options[step]
             for setting in step_dict:
-                if setting in step_run_options and options['verbose']:
-                    print_warning('Option %s' % setting
-                                  + ' for step %s' % step
-                                  + ' by Step-Specific Options File'
-                                  + ' Setting: %s' % step_options[setting])
-
+                if setting in step_run_options:
+                    print_warning('Option  "%s" ' % setting
+                                  + ' for step  "%s" ' % step
+                                  + ' value "%s"' % str(step_run_options[setting])
+                                  + ' is being overwritten by step-specific options file'
+                                  + ' value:  "%s"' % step_run_options[setting])
                 step_run_options[setting] = step_dict[setting]
 
 
         #Add Pipe-Specific Step Settings to Segment Settings
-        for setting in step_options:
-            if setting in step_run_options and options['verbose']:
-                print_warning('Option %s Being Overridden' % setting
-                              + ' for Pipe Step %s' % step
-                              + ' by Pipe Setting: %s' % step_options[setting])
-            step_run_options[setting] = step_options[setting]
+        for setting in pipe_step_options:
+            #If pipe-specific option already given, print warning and override.
+            if setting in step_run_options:
+                print_warning('Option  "%s" ' % setting
+                              + ' with Value:  "%s" ' % step_run_options[setting]
+                              + ' is Being Overridden for Pipe Step  "%s" ' % step
+                              + ' by Pipe Setting Value:  "%s" ' % pipe_step_options[setting])
+            step_run_options[setting] = pipe_step_options[setting]
 
-        if 'working_directory' in step_options:
-            step_run_options['working_directory']=os.path.join(options['project_directory'],
-                                                               step_options['working_directory'])
+        if 'working_directory' in pipe_step_options:
+            full_working_directory = os.path.join(options['project_directory'], 
+                                                  pipe_step_options['working_directory']) 
+            step_run_options['working_directory'] = full_working_directory 
+
         else:
            step_run_options['working_directory'] = options['project_directory'] 
 
@@ -440,13 +454,14 @@ def manifold(options):
                 flow(step_run_options)
                 print '%s Analysis Complete.' % step
 
-        elif options['mode'] in ['test', 'read']:
+        elif options['mode'] in ['test', 'read', 'stop']:
             flow(step_run_options)
  
         else:
             print_except('Conductor Has Unrecognized Mode Type %s' % options['mode'])
 
         print ''
+        sys.stdout.flush()
 
     #Write End Time of Pipe
     if options['mode'] == 'run' and options['write_times']:

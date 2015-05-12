@@ -1,12 +1,14 @@
 #TFLOW Segment_Pipe: De Novo Assembly of RNA-Seq Reads into Transcript Sequences.
+#(Similar to Trinity_Pipe, but assumes reads have already been trimmed)
 #
 #Steps:
 #Make_Read_Lists: Parses reads into lists based on provided paramaters
-#Trimmomatic:     Trim reads based on given quality settings
 #Trinity:         Assemble reads into transcript sequences
 #CAP3:            Further assemble output transcripts into longer sequences
 #CEGMA_Analysis:  Analyze gene recapture of CEGMA core eukaryotic genes
 #BUSCO_Analysis:  Analyze gene recapture of BUSCO benchmark genes
+#Package:         Copy and Zip Final Sequence Output
+#Summary:         Create Summary Report of Results
 #
 #Dan Stribling
 #Florida State University
@@ -20,25 +22,15 @@ import os.path
 steps = OrderedDict()
 TRINITY_DIR = 'Trinity_Assembly'
 CAP3_DIR = 'CAP3'
-steps['Make_Read_Lists'] = {'raw_left_reads_list':'raw_left_reads_list',
-                            'raw_right_reads_list':'raw_right_reads_list',
-                            'raw_single_reads_list':'raw_unpaired_reads_list',
+steps['Make_Read_Lists'] = {'raw_left_reads_list':'left_reads_list',
+                            'raw_right_reads_list':'right_reads_list',
+                            'raw_single_reads_list':'unpaired_reads_list',
                             }
 
-steps['Trimmomatic'] = {'file_list_name':'trim_files',
-                        'out_dir':'Trimmed_Data',
-                        'raw_left_reads_list':'raw_left_reads_list',
-                        'raw_right_reads_list':'raw_right_reads_list',
-                        'raw_single_reads_list':'raw_unpaired_reads_list',
-                        'left_reads_list':'trimmed_left_reads_list',
-                        'right_reads_list':'trimmed_right_reads_list',
-                        'single_reads_list':'trimmed_unpaired_reads_list',
-                        }
-
 steps['Trinity'] = {'output':TRINITY_DIR,
-                    'left_reads_list':'trimmed_left_reads_list',
-                    'right_reads_list':'trimmed_right_reads_list',
-                    'single_reads_list':'trimmed_unpaired_reads_list',
+                    'left_reads_list':'left_reads_list',
+                    'right_reads_list':'right_reads_list',
+                    'single_reads_list':'unpaired_reads_list',
                     }
 
 steps['CAP3'] = {'working_directory':CAP3_DIR,
@@ -51,9 +43,13 @@ steps['CEGMA_Analysis'] = {'rel_input_analysis_file':(os.path.join(CAP3_DIR,
                            'copy_input_file':True,
                            }
 
-steps['BUSCO_Analysis'] = {'BUSCO_type':'vertebrata',
-                           'rel_input_analysis_file':(os.path.join(CAP3_DIR, 
+steps['BUSCO_Analysis'] = {'rel_input_analysis_file':(os.path.join(CAP3_DIR, 
                                                                    'Trinity.fasta.cap.combined')),
                            'working_directory':'BUSCO_Analysis',
                            'copy_input_file':True,
                            }
+
+steps['Package'] = {'rel_sequence_file':os.path.join(CAP3_DIR, 'Trinity.fasta.cap.combined'),
+                    }
+
+steps['Summary'] = {}

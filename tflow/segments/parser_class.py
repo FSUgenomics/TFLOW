@@ -86,7 +86,7 @@ class OutputParser():
         return str(int((self.next_milestone_index+1)/float(len(self.milestones)) * 100)
                          ).zfill(2) + '% Completion '
 
-    def check_completion(self):
+    def check_completion(self, failure_exit=True):
         # If No Output File, Not Done.
         if not self.output_exists():
             return False
@@ -110,7 +110,7 @@ class OutputParser():
 
         # If Failure Flag Found, Report and Terminate Search.
         for line in reversed(output):
-            if self.check_failure(line):
+            if self.check_failure(line) and failure_exit:
                 print '%s Job has failed, Printing Final Output:' % self.job_type
                 print ' --- '
                 for line in output:

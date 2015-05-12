@@ -13,6 +13,7 @@ import sys
 from collections import OrderedDict
 
 if __name__ == "__main__" and __package__ is None:
+    sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../../'))
     import tflow
     __package__ = "tflow.segments"
 
@@ -43,8 +44,9 @@ VERSION_COMMAND = '--version'
 OUT_FILE = 'Trimmomatic.out'
 MILESTONES = ['Production Trimmer Started',
               'Writing Trimmed',
+              'Trimmomatic Job Done',
               ]
-TERMINAL_FLAGS = ['Trimmomatic Job Done.']
+TERMINAL_FLAGS = []
 FAILURE_FLAGS = ['Exiting Early...',
                  'Traceback',
                  'Not Found']
@@ -95,7 +97,8 @@ class Parser(OutputParser):
 def check_done(options):
     parser = Parser()
     parser.out_file = options['out_file']
-    return parser.check_completion()
+    failure_exit = (options['mode'] in ['run', 'track'])
+    return parser.check_completion(failure_exit)
 
 def track(options):
     parser = Parser()
@@ -104,6 +107,7 @@ def track(options):
 
 def analyze(options):
     print '    No Analysis Yet Implemented.'
+    return ''
 
 def read(options):
     parser = Parser()
@@ -191,8 +195,9 @@ def run(options):
                        + ' of unpaired reads not found.')
 
         if not os.path.isfile(options['raw_single_reads_list']):
-                print_exit('Reads List: %s Not Found' % 'raw_single_reads_list'
-                           + ' at Location: $s' % options['raw_single_reads_list'])
+            print options['raw_single_reads_list']
+            print_exit('Reads List: %s Not Found' % 'raw_single_reads_list'
+                       + ' at Location: %s' % options['raw_single_reads_list'])
 
         print 'Reading Unpaired Reads File List: %s' % options['raw_single_reads_list'] 
         raw_reads = read_file_list(options['raw_single_reads_list'])
@@ -206,18 +211,18 @@ def run(options):
     if options['is_paired_reads']:
         print '  Left Reads:'
         for read in raw_left_reads:
-            print('  --' + read)
+            print('  -- ' + read)
         print ''
         print '  Right Reads:'
         for read in raw_right_reads:
-            print('  --' + read)
+            print('  -- ' + read)
         print ''
         trim_reads = raw_left_reads
 
     else:
         print '  Unpaired Reads:'
         for read in raw_reads:
-            print('  --' + read)
+            print('  -- ' + read)
         print ''
         trim_reads = raw_reads
 
@@ -235,13 +240,19 @@ def run(options):
             os.makedirs(full_output_directory)
 
     out_files = OrderedDict()
-    out_files['left_paired'] = []
-    out_files['right_paired'] = []
-    out_files['left_unpaired'] = []
-    out_files['right_unpaired'] = []
+    if options['is_paired_reads']:
+        out_files['left_paired'] = []
+        out_files['right_paired'] = []
+        out_files['left_unpaired'] = []
+        out_files['right_unpaired'] = []
+    else:
+        out_files['single_reads'] = []
 
     for read in trim_reads:
         full_read = os.path.join(options['working_directory'], read)
+        if not os.path.isfile(full_read):
+            print_exit('Input Read File for Trimming: %s Cannot Be Found.' % full_read)
+
         starting_reads = count_FASTQ_all(full_read)
         total_count_before += starting_reads
 
@@ -253,6 +264,7 @@ def run(options):
         threads_list = ['-threads', options['max_CPU']]
         threads = ' '.join(threads_list)
 
+        #Prepare Command for Paired Reads
         if options['is_paired_reads']:
             mode = 'PE'
             base_name = os.path.basename(read)
@@ -314,19 +326,75 @@ def run(options):
                     action_list.append(formatted_setting)
                     print '   ', formatted_setting.strip()
 
+            command_segments = ([options['command'], mode, threads,
+                                 base_out, base_in, trim_log] + action_list)
+
+            command_list = (list(options['command_list']) + [mode] + threads_list + base_out_list 
+                            + base_in_list + trim_log_list + action_list)
+
+        #Prepare Command for Unpaired Reads
+        else:
+            mode = 'SE'
+            base_name = os.path.basename(read)
+            base_name = base_name.rstrip('gz').rstrip('.').rstrip('fastq').rstrip('.')
+
+            out_base_name = base_name + '-Trimmed'
+            out_read = out_base_name + '.fq'
+
+            if 'output_directory' in options:
+                out_read = os.path.join(options['output_directory'], out_read)
+                out_base_name = os.path.join(options['output_directory'], out_base_name)
+
+            full_out_read = os.path.join(options['working_directory'], out_read)
+
+            trim_log_name =  base_name + '.trimlog'
+            if 'output_directory' in options:
+                trim_log_name = os.path.join(options['output_directory'], trim_log_name)
+            trim_log_list = ['-trimlog', trim_log_name]
+            trim_log = ' '.join(trim_log_list)
+
+
+            expected_out_files = OrderedDict()
+            expected_out_files['single_reads'] = out_read
+
+            expected_full_out_files = OrderedDict()
+            for out_file in expected_out_files:
+                expected_full_out_files[out_file] = os.path.join(options['working_directory'],
+                                                                 expected_out_files[out_file])
+
+            print ''
+            print '  Output File Basename: %s' % out_base_name
+            print '  Expected Output Files:'
+            for file_name in expected_out_files.values():
+                print '   ', file_name
+
+            action_list = []
+            print ''
+            print '  Trim Settings:'
+            for trim_setting in TRIM_SETTINGS_DICT:
+                if trim_setting in options:
+                    setting = options[trim_setting]
+                    if isinstance(setting, list):
+                        setting = ':'.join(options[trim_setting])
+
+                    formatted_setting = (TRIM_SETTINGS_DICT[trim_setting] + setting)
+                    action_list.append(formatted_setting)
+                    print '   ', formatted_setting.strip()
+
+            command_segments = ([options['command'], mode, threads, trim_log,
+                                 full_read, full_out_read] + action_list)
+
+            command_list = (list(options['command_list']) + [mode] + threads_list + trim_log_list
+                            + [full_read] + [full_out_read] + action_list)
+
+
+        #Run Trimmomatic Command
         print ''  
-
-        command_segments = ([options['command'], mode, threads,
-                            base_out, base_in, trim_log] + action_list)
-
-        command_list = (options['command_list'] + [mode] + threads_list + base_out_list + 
-                         base_in_list + trim_log_list + action_list)
-
-        command = ' '.join(command_list)
         print '  Running Command with Segments:'
         for segment in command_segments:
             print '    ' + segment
 
+        command = ' '.join(command_list)
         if options['write_command']:
             command_file.write(command + '\n\n')
 
@@ -342,8 +410,7 @@ def run(options):
 
         except KeyboardInterrupt:
             if __name__ != '__main__' and options['is_pipe']:
-                sys.stdout = terminal_out
-                sys.stderr = terminal_error
+                sys.stdout, sys.stderr = terminal_out, terminal_error
                 out_file_stream.close()
             print ''
             print 'Killing Trimmomatic Process'
@@ -365,11 +432,17 @@ def run(options):
             for out_file in expected_full_out_files:
                 if os.path.isfile(expected_full_out_files[out_file]):
                     print '    Found:', expected_out_files[out_file]
+                    print out_files
+                    print expected_out_files
                     out_files[out_file].append(expected_out_files[out_file])
 
         if options['is_paired_reads']:
             final_reads = count_FASTQ_all(os.path.join(options['working_directory'],
                                                        expected_out_files['left_paired']))
+        else:
+            final_reads = count_FASTQ_all(os.path.join(options['working_directory'],
+                                                       expected_out_files['single_reads']))
+
         total_count_after += final_reads
         print ''
         print 'Finished With File:', read
@@ -387,11 +460,15 @@ def run(options):
     print ''
     print 'Writing Final Output Files:'
     if options['is_paired_reads']:
-        left_reads = out_files['left_paired'][:]
-        right_reads = out_files['right_paired'][:]
+        left_reads = list(out_files['left_paired'])
+        right_reads = list(out_files['right_paired'])
         if options['include_unpaired_output']:
-            left_reads += out_files['left_unpaired'][:]
-            right_reads += out_files['right_unpaired'][:]
+            left_reads += list(out_files['left_unpaired'])
+            right_reads += list(out_files['right_unpaired'])
+        if not left_reads:
+            print_exit('No Ouput Left Reads Were Found!')
+        elif not right_reads:
+            print_exit('No Ouput Right Reads Were Found!')
         print 'Writing Trimmed Left Read Files to List: %s' % options['left_reads_list']
         for read in left_reads:
             print ' ', read
@@ -407,7 +484,15 @@ def run(options):
                         right_reads)
 
     else:
-        print 'Single Read List Writing Not Implemented.'
+        single_reads = out_files['single_reads']
+        if not single_reads:
+            print_exit('No Ouput Trimmed Reads Were Found!')
+        print 'Writing Trimmed Read Files to List: %s' % options['single_reads_list']
+        for read in single_reads:
+            print ' ', read
+
+        write_file_list(os.path.join(options['working_directory'], options['single_reads_list']),
+                        single_reads)
 
     print 'Trimmomatic Job Done.'
 

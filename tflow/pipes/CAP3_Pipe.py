@@ -5,6 +5,7 @@
 #CAP3:            Further assemble output transcripts into longer sequences
 #CEGMA_Analysis:  Analyze gene recapture of CEGMA core eukaryotic genes
 #BUSCO_Analysis:  Analyze gene recapture of BUSCO benchmark genes
+#Summary:         Create Summary Report of Results
 #
 #Dan Stribling
 #Florida State University
@@ -13,15 +14,19 @@
 #Project URL: http://www.github.com/fsugenomics/tflow
 
 from collections import OrderedDict
-import os.path
 
 steps = OrderedDict()
-steps['CAP3'] = {'working_directory':''
+steps['CAP3'] = {'working_directory':'',
+                 'write_result_name':True,
                  }
-
 steps['CEGMA_Analysis'] = {'working_directory':'CEGMA_Analysis',
+                           'result_name_file':'CAP3.auto.result_name',
+                           }
+steps['BUSCO_Analysis'] = {'working_directory':'BUSCO_Analysis',
+                           'result_name_file':'CAP3.auto.result_name',
                            }
 
-steps['BUSCO_Analysis'] = {'BUSCO_type':'vertebrata',
-                           'working_directory':'BUSCO_Analysis',
-                           }
+steps['Package'] = {'result_name_file':'CAP3.auto.result_name',
+                    }
+
+steps['Summary'] = {}

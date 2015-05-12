@@ -8,6 +8,6 @@
 #Project URL: http://www.github.com/fsugenomics/tflow
 
 TFLOW_DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
-export PYTHONPATH=$TFLOW_DIR:$PYTHONPATH
-$TFLOW_DIR/tflow.sh test -t Trinity_Pipe 
-#$TFLOW_DIR/tflow.sh test -t Trinity_Pipe --print_test_output=True
+#export PYTHONPATH=$TFLOW_DIR:$PYTHONPATH
+$TFLOW_DIR/tflow.sh test -t Test_Pipe 
+#$TFLOW_DIR/tflow.sh test -t Test_Pipe --print_test_output=True

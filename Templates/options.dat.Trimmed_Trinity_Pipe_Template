@@ -105,6 +105,8 @@ read_type         fq		#Input Read Type: "fq" for .fastq[.gz], "fa" for .fasta[.g
 #CAP3.working_directory	   CAP3
 #CAP3.command_list	   [CAP3_location]/cap3
 #CAP3.out_file	   	   CAP3.out
+#CAP3.connections_file     connections.out
+#CAP3.combined_input_name  combined_input.fa
 
 
 # -- CEGMA_Analysis Settings --
@@ -116,6 +118,7 @@ read_type         fq		#Input Read Type: "fq" for .fastq[.gz], "fa" for .fasta[.g
 #CEGMA_Analysis.evalue_cutoff	     	1e-20
 #CEGMA_Analysis.blast_result_file	blast.out
 #CEGMA_Analysis.print_missing_genes  	False
+#CEGMA_Analysis.print_matches           False
 #CEGMA_Analysis.blast_command_list   	[blast_location]/blastx
 #CEGMA_Analysis.blast_db_command_list	[blast_location]/makeblastdb
 #CEGMA_Analysis.test_command		-h
@@ -132,10 +135,14 @@ read_type         fq		#Input Read Type: "fq" for .fastq[.gz], "fa" for .fasta[.g
 #BUSCO_Analysis.evalue_cutoff	     	1e-20
 #BUSCO_Analysis.blast_result_file	blast.out
 #BUSCO_Analysis.print_missing_genes  	False
+#BUSCO_Analysis.print_matches           False
 #BUSCO_Analysis.blast_command_list   	[blast_location]/blastx
 #BUSCO_Analysis.blast_db_command_list	[blast_location]/makeblastdb
 #BUSCO_Analysis.test_command		-h
 #BUSCO_Analysis.out_file		BUSCO_Analysis.out
+
+# -- Package Settings --
+#Package.packaged_file_name     Final_Assembly.fa
 
 
 

@@ -1,6 +1,4 @@
-#!/usr/bin/env python2.7
-#TFLOW Segment And Utility: Parse provided reads files into lists, when possible.
-#For Full Usage: "Make_Read_Lists.py -h"
+#TFLOW Segment: Parse provided reads files into lists, when possible.
 #
 #Dan Stribling
 #Florida State University
@@ -13,6 +11,7 @@ import os.path
 import sys
 
 if __name__ == "__main__" and __package__ is None:
+    sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../../'))
     import tflow.segments
     __package__ = "tflow.segments"
 
@@ -24,10 +23,10 @@ from ..util import (print_exit, write_file, write_file_list, ensure_FASTQ_GZ,
 JOB_TYPE = 'Make_Read_Lists'
 PROGRAM_URL = None
 SEGMENT_FOR_VERSION = '0.9'
-COMMAND_LIST = ['python2.7', os.path.realpath(__file__)]
-COMMAND = ' '.join(COMMAND_LIST)
-TEST_COMMAND = '-h'
-OUT_FILE = 'Make_Read_Lists.out'
+#COMMAND_LIST = ['python2.7', os.path.realpath(__file__)]
+#COMMAND = ' '.join(COMMAND_LIST)
+#TEST_COMMAND = '-h'
+OUT_FILE = JOB_TYPE + '.out'
 MILESTONES = ['Preparation Complete']
 TERMINAL_FLAGS = []
 FAILURE_FLAGS = ['Exiting Early...',
@@ -42,16 +41,17 @@ DEFAULT_SETTINGS = {'is_paired_reads':True,
                     'left_read_indicator':'_R1',
                     'right_read_indicator':'_R2',
                     #TFLOW Settings
-                    'command':COMMAND,
-                    'command_list':COMMAND_LIST,
-                    'test_command':TEST_COMMAND,
+                    #'command':COMMAND,
+                    #'command_list':COMMAND_LIST,
+                    #'test_command':TEST_COMMAND,
                     'program_URL':PROGRAM_URL,
                     'segment_for_version':SEGMENT_FOR_VERSION,
                     #TFLOW Writing Defaults, Used if Global Not Set
                     'write_command':True,
                     }
                     
-REQUIRED_SETTINGS = ['command_list', 'is_paired_reads', 'read_type', 'write_command']
+#REQUIRED_SETTINGS = ['command_list', 'is_paired_reads', 'read_type', 'write_command']
+REQUIRED_SETTINGS = ['is_paired_reads', 'read_type']
 
 class Parser(OutputParser):
     def set_local_defaults(self):
@@ -63,7 +63,8 @@ class Parser(OutputParser):
 def check_done(options):
     parser = Parser()
     parser.out_file = options['out_file']
-    return parser.check_completion()
+    failure_exit = (options['mode'] in ['run', 'track'])
+    return parser.check_completion(failure_exit)
 
 def track(options):
     parser = Parser()
@@ -79,20 +80,27 @@ def read(options):
     parser.read_or_notify()
 
 def test(options, silent=False):
-    try:
-        output = subprocess.check_output(options['command_list'] + [options['test_command']])
-        if silent:
-            return True
-        else:
-            print ' -- %s Found!' % JOB_TYPE
+    if silent:
+        return True
+    else:
+        print ' -- %s Found!' % JOB_TYPE
+        output = 'File Location: %s' % os.path.realpath(__file__)
+        return output
 
-    except OSError as error:
-        if silent:
-            return False
-        print '%s Cannot Be Found With Shell Command: "%s"' % (JOB_TYPE, options['command'])
-        output = 'Error Number: %s\nError Text:\n%s' % (str(error.errno), error.strerror)
+    #Individual Executable Operation Currently Disabled.
+    #try:
+    #    output = subprocess.check_output(options['command_list'] + [options['test_command']])
+    #    if silent:
+    #        return True
+    #    else:
+    #        print ' -- %s Found!' % JOB_TYPE
 
-    return output
+    #except OSError as error:
+    #    if silent:
+    #        return False
+    #    print '%s Cannot Be Found With Shell Command: "%s"' % (JOB_TYPE, options['command'])
+    #    output = 'Error Number: %s\nError Text:\n%s' % (str(error.errno), error.strerror)
+    #return output
 
 def run(options):
     if __name__ != '__main__' and options['is_pipe']:
@@ -110,7 +118,7 @@ def run(options):
         reads = ensure_list(options['raw_reads'])
         print 'Parsing Input Reads:'
         for read in reads:
-            print '  --' + read
+            print '  -- ' + read
 
         if options['is_paired_reads']:
             left_reads = []
@@ -149,21 +157,21 @@ def run(options):
             print_exit('Required Option: reads, for input'
                        + ' of paired end reads not found.')
 
-    if options['is_paired_reads']:
-        command = (COMMAND + ' --raw_left_reads %s' % ' '.join(left_reads)
-                   + ' --raw_right_reads %s ' % ' '.join(right_reads)
-                   + '--is_paired_reads True') 
-    else:
-        command = (COMMAND + ' --reads %s' % ' '.join(reads)
-                   + '--is_paired_reads False') 
-
-    if options['write_command']:
-        command_file = os.path.join(options['project_directory'], 
-                                    options['job_type'] + '.auto.sh')
-        write_file(command_file, '#!/bin/sh\n' + command)
-    print 'Running Command:\n    ' + command
-
-    print ''
+    #Individual Executable Operation Currently Disabled.
+    #if options['is_paired_reads']:
+    #    command = (COMMAND + ' --raw_left_reads %s' % ' '.join(left_reads)
+    #               + ' --raw_right_reads %s ' % ' '.join(right_reads)
+    #               + '--is_paired_reads True') 
+    #else:
+    #    command = (COMMAND + ' --reads %s' % ' '.join(reads)
+    #               + '--is_paired_reads False') 
+    #
+    #if options['write_command']:
+    #    command_file = os.path.join(options['project_directory'], 
+    #                                options['job_type'] + '.auto.sh')
+    #    write_file(command_file, '#!/bin/sh\n' + command)
+    #print 'Running Command:\n    ' + command
+    #print ''
 
     #Ensure reads exist and are of correct type.
     for read in reads:
@@ -193,12 +201,12 @@ def run(options):
         write_file_list(options['raw_left_reads_list'], left_reads)
         print '  Left read file names written to file: %s' % options['raw_left_reads_list']
         for read in left_reads:
-            print '  --' + read
+            print '  -- ' + read
         print ''
         write_file_list(options['raw_right_reads_list'], right_reads)
         print '  Right read file names written to file: %s' % options['raw_right_reads_list']
         for read in right_reads:
-            print '  --' + read
+            print '  -- ' + read
 
     #Unpaired Reads
     else:
@@ -206,9 +214,10 @@ def run(options):
             print_exit('Required Option: raw_single)reads_list for Make_Read_Lists not given.')
 
         print 'Using Unpaired Reads:'
+        write_file_list(options['raw_single_reads_list'], reads)
         print '  Unpaired read names written to file: %s' % options['raw_single_reads_list']
         for read in reads:
-            print '  --' + read
+            print '  -- ' + read
 
     print ''
     print 'Read File List Preparation Complete.'                        
@@ -218,21 +227,22 @@ def run(options):
         sys.stderr = terminal_error
         out_file.close()
 
-if __name__ == '__main__':
-    from ..manifold import get_settings, print_settings
-    options = get_settings()
-    if 'project_directory' not in options:
-        options['project_directory'] = os.getcwd()
-    if 'working_directory' not in options:
-        options['working_directory'] = os.getcwd()
-    #print_settings(options)
-
-    print ''
-    print 'Running %s Job...' % JOB_TYPE
-    print ''
-
-    run(options)
-
-    print ''
-    print 'Complete'
-    print ''
+#Individual Executable Operation Currently Disabled.
+#if __name__ == '__main__':
+#    from ..manifold import get_settings, print_settings
+#    options = get_settings()
+#    if 'project_directory' not in options:
+#        options['project_directory'] = os.getcwd()
+#    if 'working_directory' not in options:
+#        options['working_directory'] = os.getcwd()
+#    #print_settings(options)
+#
+#    print ''
+#    print 'Running %s Job...' % JOB_TYPE
+#    print ''
+#
+#    run(options)
+#
+#    print ''
+#    print 'Complete'
+#    print ''
