@@ -32,6 +32,7 @@ MILESTONES = ['Performing Statistical Analysis',
 TERMINAL_FLAGS = []
 FAILURE_FLAGS = ['Exiting Early...',
                  'Traceback',
+                 'Exception: ERROR',
                  'Not Found']
 DEFAULT_SETTINGS = {'copy_input_file':False,
                     #TFLOW Settings
@@ -70,6 +71,15 @@ def read(options):
     parser = Parser()
     parser.out_file = options['out_file']
     parser.read_or_notify()
+
+def stop(options):
+    print '    %s Job Stopping Not Applicable' % JOB_TYPE
+
+def clean(options):
+    remove_outfile = (options['mode'] == 'reset')
+    util.clean_TFLOW_auto_files(options['job_type'], options['project_directory'],
+                                options['working_directory'], remove_outfile=remove_outfile, 
+                                confirm=options['confirm'])
 
 def test(options, silent=False):
     if silent:

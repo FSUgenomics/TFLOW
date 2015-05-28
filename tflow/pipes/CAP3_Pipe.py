@@ -3,6 +3,7 @@
 #
 #Steps:
 #CAP3:            Further assemble output transcripts into longer sequences
+#Package:         Copy and Zip Final Sequence Output
 #CEGMA_Analysis:  Analyze gene recapture of CEGMA core eukaryotic genes
 #BUSCO_Analysis:  Analyze gene recapture of BUSCO benchmark genes
 #Summary:         Create Summary Report of Results
@@ -19,14 +20,15 @@ steps = OrderedDict()
 steps['CAP3'] = {'working_directory':'',
                  'write_result_name':True,
                  }
+
+steps['Package'] = {'result_name_file':'CAP3.auto.result_name',
+                    }
+
 steps['CEGMA_Analysis'] = {'working_directory':'CEGMA_Analysis',
                            'result_name_file':'CAP3.auto.result_name',
                            }
 steps['BUSCO_Analysis'] = {'working_directory':'BUSCO_Analysis',
                            'result_name_file':'CAP3.auto.result_name',
                            }
-
-steps['Package'] = {'result_name_file':'CAP3.auto.result_name',
-                    }
 
 steps['Summary'] = {}

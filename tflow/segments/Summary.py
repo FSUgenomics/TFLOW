@@ -18,6 +18,7 @@ if __name__ == "__main__" and __package__ is None:
 from .parser_class import OutputParser
 from ..util import (print_exit, write_file, read_report, combine_report, write_file_list, 
                     ensure_FASTQ_GZ, ensure_FASTA_GZ, ensure_list)
+from .. import util
 
 JOB_TYPE = 'Summary'
 PROGRAM_URL = None
@@ -31,9 +32,11 @@ MILESTONES = ['Creating Summary Report',
 TERMINAL_FLAGS = []
 FAILURE_FLAGS = ['Exiting Early...',
                  'Traceback',
+                 'Exception: ERROR',
                  'Not Found']
 
 DEFAULT_SETTINGS = {'write_report':True,
+                    'write_csv_report':True,
                     #TFLOW Settings
                     #'command':COMMAND,
                     #'command_list':COMMAND_LIST,
@@ -46,7 +49,7 @@ DEFAULT_SETTINGS = {'write_report':True,
                     
 #REQUIRED_SETTINGS = ['out_file', 'command_list', 'write_report', 'write_command', 
 #                     'working_directory']
-REQUIRED_SETTINGS = ['out_file', 'write_report', 'working_directory']
+REQUIRED_SETTINGS = ['out_file', 'write_report', 'write_csv_report', 'working_directory']
 
 class Parser(OutputParser):
     def set_local_defaults(self):
@@ -70,6 +73,15 @@ def read(options):
     parser = Parser()
     parser.out_file = options['out_file']
     parser.read_or_notify()
+
+def stop(options):
+    print '    %s Job Stopping Not Applicable' % JOB_TYPE
+
+def clean(options):
+    remove_outfile = (options['mode'] == 'reset')
+    util.clean_TFLOW_auto_files(options['job_type'], options['project_directory'],
+                                options['working_directory'], remove_outfile=remove_outfile, 
+                                confirm=options['confirm'])
 
 def test(options, silent=False):
     if silent:
@@ -170,6 +182,13 @@ def analyze(options):
                                    JOB_TYPE + '.report')
         write_file(report_file, combined_report)
 
+        if options['write_csv_report']: 
+            csv_report = combine_report(reports, write_separator=',')
+            report_file = os.path.join(options['working_directory'],
+                                       JOB_TYPE + '.report.csv')
+            write_file(report_file, csv_report)
+
+    print analysis
     return analysis
 
 
@@ -181,7 +200,7 @@ def run(options):
 
     print 'Creating Summary Report'
 
-    print analyze(options)
+    analyze(options)
 
     print 'Summary Complete.'                        
 

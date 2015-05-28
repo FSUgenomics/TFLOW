@@ -5,9 +5,9 @@
 #Trimmomatic:     Trim reads based on given quality settings
 #Trinity:         Assemble reads into transcript sequences
 #CAP3:            Further assemble output transcripts into fewer sequences
+#Package:         Copy and Zip Final Sequence Output
 #CEGMA_Analysis:  Analyze gene recapture of CEGMA core eukaryotic genes
 #BUSCO_Analysis:  Analyze gene recapture of BUSCO benchmark genes
-#Package:         Copy and Zip Final Sequence Output
 #Summary:         Create Summary Report of Results
 #
 #Dan Stribling
@@ -47,6 +47,9 @@ steps['CAP3'] = {'working_directory':CAP3_DIR,
                  'relative_input_file':os.path.join(TRINITY_DIR, 'Trinity.fasta'),
                  }
 
+steps['Package'] = {'rel_sequence_file':os.path.join(CAP3_DIR, 'Trinity.fasta.cap.combined'),
+                    }
+
 steps['CEGMA_Analysis'] = {'rel_input_analysis_file':(os.path.join(CAP3_DIR, 
                                                                    'Trinity.fasta.cap.combined')),
                            'working_directory':'CEGMA_Analysis',
@@ -58,8 +61,5 @@ steps['BUSCO_Analysis'] = {'rel_input_analysis_file':(os.path.join(CAP3_DIR,
                            'working_directory':'BUSCO_Analysis',
                            'copy_input_file':True,
                            }
-
-steps['Package'] = {'rel_sequence_file':os.path.join(CAP3_DIR, 'Trinity.fasta.cap.combined'),
-                    }
 
 steps['Summary'] = {}

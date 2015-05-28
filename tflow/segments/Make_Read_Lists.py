@@ -18,7 +18,7 @@ if __name__ == "__main__" and __package__ is None:
 from .parser_class import OutputParser
 from ..util import (print_exit, write_file, write_file_list, ensure_FASTQ_GZ, 
                     ensure_FASTA_GZ, ensure_list)
-
+from .. import util
 
 JOB_TYPE = 'Make_Read_Lists'
 PROGRAM_URL = None
@@ -31,6 +31,7 @@ MILESTONES = ['Preparation Complete']
 TERMINAL_FLAGS = []
 FAILURE_FLAGS = ['Exiting Early...',
                  'Traceback',
+                 'Exception: ERROR',
                  'Not Found']
 
 DEFAULT_SETTINGS = {'is_paired_reads':True,
@@ -78,6 +79,17 @@ def read(options):
     parser = Parser()
     parser.out_file = options['out_file']
     parser.read_or_notify()
+
+def stop(options):
+    print '    Job Stopping Not Applicable'
+
+def clean(options):
+    remove_outfile = (options['mode'] == 'reset')
+    out_files = [options['raw_single_reads_list'], options['raw_left_reads_list'],
+                 options['raw_right_reads_list']]
+    util.clean_TFLOW_auto_files(options['job_type'], options['project_directory'],
+                                options['working_directory'], remove_outfile=remove_outfile,
+                                confirm=options['confirm'], out_files=out_files)
 
 def test(options, silent=False):
     if silent:
@@ -142,11 +154,11 @@ def run(options):
         print 'Parsing Paired Input Reads:'
         print 'Left Reads:'
         for read in left_reads:
-            print '  --' + read
+            print '  -- ' + read
         print ''
         print 'Right Reads:'
         for read in right_reads:
-            print '  --' + read
+            print '  -- ' + read
         print ''
         
     else:

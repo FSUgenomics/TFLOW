@@ -20,7 +20,9 @@ from .. import local_settings
 from .parser_class import OutputParser
 from ..fasta import check_N50_in_place
 from ..util import (print_exit, print_error, print_warning, write_file, write_report, 
-                    read_file_list, ensure_FASTQ_GZ, ensure_FASTA_GZ)
+                    read_file_list, delete_pid_file, ensure_FASTQ_GZ, ensure_FASTA_GZ,
+                    stop_TFLOW_process)
+from .. import util
 
 if hasattr(local_settings, 'TRINITY_LOCATION'):
     TRINITY_LOCATION = local_settings.TRINITY_LOCATION
@@ -64,6 +66,7 @@ MILESTONES = ['Jellyfish',
 TERMINAL_FLAGS = ['Trinity Job Complete']
 FAILURE_FLAGS = ['Exiting Early...',
                  'Traceback',
+                 'Exception: ERROR',
                  'Not Found']
 DEFAULT_SETTINGS = {'is_paired_reads':True,
                     'read_type':'fq',
@@ -140,10 +143,11 @@ DEFAULT_SETTINGS = {'is_paired_reads':True,
                     #TFLOW Writing Defaults, Used if Global Not Set
                     'write_report':True,
                     'write_command':True,
+                    'write_pid':True,
                     }
 
 REQUIRED_SETTINGS = ['command_list', 'is_paired_reads', 'read_type', 'max_memory', 'write_report',
-                     'write_command']
+                     'write_command', 'write_pid']
 
 REQUIRED_ANALYSIS_SETTINGS = ['working_directory', 'output_dir', 'out_sequence_file', 
                               'write_report']
@@ -184,6 +188,22 @@ def track(options):
     parser.out_file = options['out_file']
     parser.track()
 
+def read(options):
+    parser = Parser()
+    parser.out_file = options['out_file']
+    parser.read_or_notify()
+
+def stop(options):
+    job_pid_file = os.path.join(options['working_directory'],
+                                JOB_TYPE + '.auto.pid')
+    stop_TFLOW_process(job_pid_file, JOB_TYPE)
+
+def clean(options):
+    remove_outfile = (options['mode'] == 'reset')
+    util.clean_TFLOW_auto_files(options['job_type'], options['project_directory'],
+                                options['working_directory'], remove_outfile=remove_outfile, 
+                                confirm=options['confirm'])
+
 def analyze(options):
     for required_option in REQUIRED_ANALYSIS_SETTINGS:
         if required_option not in options:
@@ -213,14 +233,6 @@ def analyze(options):
         write_report(report_file, report_dict)
 
     return analysis
-
-    
-
-
-def read(options):
-    parser = Parser()
-    parser.out_file = options['out_file']
-    parser.read_or_notify()
 
 def test(options, silent=False):
     try:
@@ -302,10 +314,10 @@ def run(options):
 
         elif all(x in options for x in ['left_reads_list', 'right_reads_list']):
             if not os.path.isfile(options['left_reads_list']):
-                print_exit('All Reads List File: %s' % options['all_reads_list']
+                print_exit('All Reads List File: %s' % options['left_reads_list']
                            + ' Not Found!')
             if not os.path.isfile(options['right_reads_list']):
-                print_exit('All Reads List File: %s' % options['all_reads_list']
+                print_exit('All Reads List File: %s' % options['right_reads_list']
                            + ' Not Found!')
             raw_left_reads = read_file_list(options['left_reads_list'])
             raw_right_reads = read_file_list(options['right_reads_list'])
@@ -353,15 +365,23 @@ def run(options):
         print 'Using Paired End Reads:'
         print '  Left Reads:'
         for read in left_reads:
-            print '  --' + read
+            print '  -- ' + read
+            if read != os.path.normpath(read):
+                print '    (%s)' % os.path.normpath(read)
         print ''
         print '  Right Reads:'
         for read in right_reads:
-            print '  --' + read
+            print '  -- ' + read
+            if read != os.path.normpath(read):
+                print '    (%s)' % os.path.normpath(read)
+
     else:
         print 'Using Unpaired Reads:'
         for read in single_reads:
-            print '  --' + read
+            print '  -- ' + read
+            if read != os.path.normpath(read):
+                print '    (%s)' % os.path.normpath(read)
+
     print ''
     
 
@@ -400,7 +420,13 @@ def run(options):
     try:
         process = subprocess.Popen(command_list, stdout=sys.stdout, stderr=sys.stderr,
                                    cwd=options['project_directory'])
+        if options['write_pid']:
+            pid_file_name = os.path.join(options['working_directory'],
+                                         options['job_type'] + '.auto.pid')
+            write_file(pid_file_name, str(process.pid))
         process.wait()
+        if options['write_pid']:
+            delete_pid_file(pid_file_name)
         sys.stdout.flush()
 
     except KeyboardInterrupt:

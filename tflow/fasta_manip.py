@@ -14,14 +14,15 @@ import sys
 import os.path
 
 if __name__ == "__main__" and __package__ is None:
+    sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../'))
     import tflow
     __package__ = "tflow"
 
-from .fasta import check_FASTA, check_N50, check_N50_in_place
+from .fasta import check_FASTA, check_N50, check_N50_in_place, details
 
-PRINT_MODES = {'check':'check', 'N50':'N50', 'IP_N50':'IP_N50'}
+PRINT_MODES = {'check':'check', 'N50':'N50', 'IP_N50':'IP_N50', 'details':'details'}
 FLEXIBLE_MODES = {'verify':'check', 'n50':'N50', 'ip_n50':'IP_N50', 'IP_n50':'IP_N50', 
-                  'ip_N50':'IP_N50'}
+                  'ip_N50':'IP_N50', 'Details':'details'}
 ALL_MODES = PRINT_MODES.copy()
 ALL_MODES.update(FLEXIBLE_MODES)
 
@@ -68,6 +69,12 @@ if __name__ == '__main__':
         print '  --- Going to Find N50 Length of Fasta File: %s In Place ---' % sequence_file
         print ''
         check_N50_in_place(sequence_file)
+
+    elif mode == 'details':
+        print ''
+        print '  --- Going to Find Sequence Details for Fasta File: %s ---' % sequence_file
+        print ''
+        details(sequence_file)
 
     print ''
     print ' --- All Done! --- '

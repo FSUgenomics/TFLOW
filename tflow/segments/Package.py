@@ -16,7 +16,8 @@ if __name__ == "__main__" and __package__ is None:
     __package__ = "tflow.segments"
 
 from .parser_class import OutputParser
-from ..util import (print_exit, write_file, read_file)
+from ..util import (print_exit, write_file, read_file, stop_TFLOW_process, delete_pid_file)
+from .. import util
 
 JOB_TYPE = 'Package'
 PROGRAM_URL = None
@@ -31,6 +32,7 @@ MILESTONES = ['Packaging Final Sequence Output',
 TERMINAL_FLAGS = []
 FAILURE_FLAGS = ['Exiting Early...',
                  'Traceback',
+                 'Exception: ERROR',
                  'Not Found']
 
 DEFAULT_SETTINGS = {'packaged_file_name':'Final_Assembly.fa',
@@ -68,6 +70,18 @@ def read(options):
     parser = Parser()
     parser.out_file = options['out_file']
     parser.read_or_notify()
+
+def stop(options):
+    job_pid_file = os.path.join(options['working_directory'],
+                                JOB_TYPE + '.auto.pid')
+    stop_TFLOW_process(job_pid_file, JOB_TYPE)
+
+def clean(options):
+    out_files = [options['packaged_file_name'], options['packaged_file_name']+'.gz']
+    remove_outfile = (options['mode'] == 'reset')
+    util.clean_TFLOW_auto_files(options['job_type'], options['project_directory'],
+                                options['working_directory'], remove_outfile=remove_outfile, 
+                                confirm=options['confirm'], out_files=out_files)
 
 def test(options, silent=False):
     try:
@@ -180,11 +194,33 @@ def run(options):
 
     sys.stdout.flush()
     zip_file = open(zip_file_name, 'w')
-    process = subprocess.Popen(command_list, stdout=zip_file, stderr=sys.stderr, 
-                                cwd=options['working_directory'])
-    process.wait()
-    zip_file.close()
-    sys.stdout.flush()
+
+    try:
+        process = subprocess.Popen(command_list, stdout=zip_file, stderr=sys.stderr, 
+                                   cwd=options['working_directory'])
+        if options['write_pid']:
+            pid_file_name = os.path.join(options['working_directory'],
+                                         options['job_type'] + '.auto.pid')
+            write_file(pid_file_name, str(process.pid))
+
+        process.wait()
+        zip_file.close()
+        sys.stdout.flush()
+
+        if options['write_pid']:
+            delete_pid_file(pid_file_name)
+
+    except KeyboardInterrupt:
+            if __name__ != '__main__' and options['is_pipe']:
+                sys.stdout, sys.stderr = terminal_out, terminal_error
+                out_file_stream.close()
+            print ''
+            print 'Killing Package Process'
+            process.kill()
+            zip_file.close()
+            raise
+
+
                                
     if os.path.isfile(zip_file_name):
         print 'Zipped Sequence File: %s Created Successfully.' % zip_file_name

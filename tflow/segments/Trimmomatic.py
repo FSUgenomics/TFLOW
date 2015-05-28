@@ -28,9 +28,11 @@ if hasattr(local_settings, 'TRIMMOMATIC_EXEC'):
 else:
     TRIMMOMATIC_EXEC = os.path.join(TRIMMOMATIC_LOCATION, 'trimmomatic-0.32.jar')
 
-from ..util import (print_exit, print_error, read_file_list, write_file_list, count_FASTQ_all, 
-                    ensure_FASTQ_GZ, percent_string, print_warning, read_process_output)
-                    
+from ..util import (print_exit, print_warning, print_error, read_file_list, write_file, 
+                    write_file_list, delete_pid_file, count_FASTQ_all, ensure_FASTQ_GZ, 
+                    percent_string, print_warning, stop_TFLOW_process)
+from .. import util
+
 from .parser_class import OutputParser
 
 JOB_TYPE = 'Trimmomatic'
@@ -49,6 +51,7 @@ MILESTONES = ['Production Trimmer Started',
 TERMINAL_FLAGS = []
 FAILURE_FLAGS = ['Exiting Early...',
                  'Traceback',
+                 'Exception: ERROR',
                  'Not Found']
 DEFAULT_SETTINGS = {'is_paired_reads':True,
                     'max_CPU':'4',
@@ -75,9 +78,11 @@ DEFAULT_SETTINGS = {'is_paired_reads':True,
                     #TFLOW Writing Defaults, Used if Global Not Set
                     'write_report':True,
                     'write_command':True,
+                    'write_pid':True,
                    } 
 
-REQUIRED_SETTINGS = ['is_paired_reads', 'working_directory', 'write_report', 'write_command']
+REQUIRED_SETTINGS = ['is_paired_reads', 'working_directory', 'write_report', 'write_command', 
+                     'write_pid']
 
 TRIM_SETTINGS_DICT = OrderedDict()
 TRIM_SETTINGS_DICT['adapater_trimming'] = ('ILLUMINACLIP:' + TRIMMOMATIC_LOCATION + '/adapters/')
@@ -113,6 +118,20 @@ def read(options):
     parser = Parser()
     parser.out_file = options['out_file']
     parser.read_or_notify()
+
+def stop(options):
+    job_pid_file = os.path.join(options['working_directory'],
+                                JOB_TYPE + '.auto.pid')
+    stop_TFLOW_process(job_pid_file, JOB_TYPE)
+
+def clean(options):
+    remove_outfile = (options['mode'] == 'reset')
+    out_files = [options['single_reads_list'], options['left_reads_list'], 
+                 options['right_reads_list']]
+
+    util.clean_TFLOW_auto_files(options['job_type'], options['project_directory'],
+                                options['working_directory'], remove_outfile=remove_outfile, 
+                                confirm=options['confirm'], out_files=out_files)
 
 def test(options, silent=False):
     try:
@@ -406,7 +425,14 @@ def run(options):
         try:
             process = subprocess.Popen(command_list, stdout=sys.stdout, stderr=sys.stderr,
                                        cwd=options['working_directory'])
+            if options['write_pid']:
+                pid_file_name = os.path.join(options['working_directory'], 
+                                             options['job_type'] + '.auto.pid')
+                write_file(pid_file_name, str(process.pid))
             process.wait()
+
+            if options['write_pid']:
+                delete_pid_file(pid_file_name)
 
         except KeyboardInterrupt:
             if __name__ != '__main__' and options['is_pipe']:

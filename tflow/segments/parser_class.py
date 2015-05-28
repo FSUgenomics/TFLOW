@@ -56,7 +56,10 @@ class OutputParser():
         if self.output_exists():
             out_file = open(self.out_file, 'r')
             for line in out_file:
-                print line.rstrip('\n')
+                if '\r' in line:
+                    print line.split('\r')[-1].rstrip()
+                else:
+                    print line.rstrip()
             out_file.close()
             
     def read_or_notify(self):
@@ -155,7 +158,10 @@ class OutputParser():
             print_except('Output File: %s Not Found!' % self.out_file)
 
         for line in output[self.last_line_index:]:
-            print line.rstrip()
+            if '\r' in line:
+                print line.split('\r')[-1].rstrip()
+            else:
+                print line.rstrip()
  
             if self.check_terminal(line):
                 still_running = False

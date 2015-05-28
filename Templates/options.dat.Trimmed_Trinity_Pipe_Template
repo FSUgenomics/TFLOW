@@ -28,10 +28,10 @@
 
 
 # !!! Settings That Must Be Supplied (or included in command line): !!! 
-job_type          Trinity_Pipe	#Job Type for TFLOW Run
-is_paired_reads   True		#Whether Input Reads are Paired-End
-read_type         fq		#Input Read Type: "fq" for .fastq[.gz], "fa" for .fasta[.gz],
-		  		#Note: "fq" required for trimming of reads with Trimmomatic.
+job_type          Trimmed_Trinity_Pipe	#Job Type for TFLOW Run
+is_paired_reads   True			#Whether Input Reads are Paired-End
+read_type         fq			#Input Read Type: "fq" for .fastq[.gz], "fa" for .fasta[.gz],
+		  			#    "fq" required for trimming of reads with Trimmomatic.
 
 # Settings that Should be Supplied (or included in command line):
 #label	   	species_tissue_1	#If Labeling of Output Desired, Supply Label.

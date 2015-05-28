@@ -10,6 +10,7 @@ import os.path
 import sys
 import subprocess
 import shutil
+from time import sleep
 
 if __name__ == "__main__" or __package__ is None:
     sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../../'))
@@ -18,7 +19,9 @@ if __name__ == "__main__" or __package__ is None:
 
 from .. import local_settings
 from .parser_class import OutputParser
-from ..util import print_exit, print_warning, write_file, write_report, read_file
+from ..util import (print_exit, print_warning, write_file, write_report, read_file, 
+                    delete_pid_file, stop_TFLOW_process)
+from .. import util
 from ..fasta import label_sequences, check_N50_in_place, check_FASTA
 
 if hasattr(local_settings, 'CAP3_LOCATION'):
@@ -43,6 +46,7 @@ MILESTONES = ['CAP3 Job Done']
 TERMINAL_FLAGS = []
 FAILURE_FLAGS = ['Exiting Early...',
                  'Traceback',
+                 'Exception: ERROR',
                  'Not Found']
 DEFAULT_SETTINGS = {'working_directory':'CAP3',
                     'connections_file':'connections.out',
@@ -57,10 +61,11 @@ DEFAULT_SETTINGS = {'working_directory':'CAP3',
                     'write_report':True,
                     'write_command':True,
                     'write_result_name':False,
+                    'write_pid':True,
                     }
 
-REQUIRED_SETTINGS = ['command_list', 'working_directory', 'write_report', 'write_command',
-                     'combined_input_name', 'write_result_name']
+REQUIRED_SETTINGS = ['command_list', 'working_directory', 'write_report', 'write_command', 
+                     'write_pid', 'combined_input_name', 'write_result_name']
 
 REQUIRED_ANALYSIS_SETTINGS = ['working_directory', 'write_report']
 
@@ -90,8 +95,8 @@ def analyze(options):
                           + '%s Analysis not given.' % JOB_TYPE)
             return ''
 
-    #Ensure that E
-    if any(x in options for x in ['absolute_input_file', 'relative_input_file'
+    #Ensure that Input File Options Given
+    if any(x in options for x in ['absolute_input_file', 'relative_input_file',
                                   'absolute_input_files', 'relative_input_files']):
         pass
 
@@ -101,6 +106,7 @@ def analyze(options):
         if not os.path.isfile(report_name_file_name):
             print_warning('Either absolute_input_file, relative_input_file, absolute_input_files,'
                           + ' or relative_input_files paramater required.')
+            return ''
 
         print ('Reading Result Sequence File Name from Provided '
                + 'File: %s' % report_name_file_name )
@@ -163,6 +169,18 @@ def read(options):
     parser.out_file = options['out_file']
     parser.read_or_notify()
 
+def stop(options):
+    job_pid_file = os.path.join(options['working_directory'],
+                                JOB_TYPE + '.auto.pid')
+    stop_TFLOW_process(job_pid_file, JOB_TYPE)
+
+def clean(options):
+    out_files = ['connections.out', 'combined_input.fa']
+    remove_outfile = (options['mode'] == 'reset')
+    util.clean_TFLOW_auto_files(options['job_type'], options['project_directory'], 
+                                options['working_directory'], remove_outfile=remove_outfile, 
+                                confirm=options['confirm'], out_files=out_files)
+
 def test(options, silent=False):
     try:
         process = subprocess.Popen(options['command_list'], stdout=subprocess.PIPE, 
@@ -191,10 +209,10 @@ def run(options):
         if required_option not in options:
             print_exit('Required Option: %s for %s not given.' % (required_option, JOB_TYPE))
 
-    if not any(x in options for x in ['absolute_input_file', 'relative_input_file'
+    if not any(x in options for x in ['absolute_input_file', 'relative_input_file',
                                       'absolute_input_files', 'relative_input_files']):
-        print_warning('Either absolute_input_file, relative_input_file, absolute_input_files,'
-                      + ' or relative_input_files paramater required.')
+        print_exit('Either absolute_input_file, relative_input_file, absolute_input_files,'
+                   + ' or relative_input_files paramater required.')
 
     if not os.path.isdir(options['working_directory']):
         print_exit('Working Directory: %s Not Found.' % options['working_directory'])
@@ -225,17 +243,22 @@ def run(options):
 
         combined_seq_file_name = os.path.join(options['working_directory'],
                                               options['combined_input_name'])
-        combined_seq_file = open(combined_seq_file_name, 'w')
-        for input_file_name in input_files:
-            print 'Adding Sequences from File: %s' % input_file_name
-            input_file = open(input_file_name, 'r')
-            for line in input_file:
-                combined_seq_file.write(line)
-            input_file.close()
+        with open(combined_seq_file_name, 'w') as combined_seq_file:
+            for input_file_name in input_files:
+                print 'Adding Sequences from File: %s' % input_file_name
+                sys.stdout.flush()
+                input_file = open(input_file_name, 'r')
+                for line in input_file:
+                    combined_seq_file.write(line)
+                combined_seq_file.flush()
+                input_file.close()
 
         print 'Creation of Combined Input File: %s Completed.' % combined_seq_file_name
         print ''
+        #print 'Skipping Verification of Integrity of Combined FASTA File:'
         print 'Verifying Integrity of Combined FASTA File:'
+        #from time import sleep
+        #sleep(3)
         check_FASTA(combined_seq_file_name)
         print 'Verification of FASTA Complete.'
         print ''
@@ -288,8 +311,17 @@ def run(options):
     try: 
         process = subprocess.Popen(command_list, stdout=process_out, stderr=sys.stderr,
                                    cwd=options['project_directory'])
+        if options['write_pid']:
+            pid_file_name = os.path.join(options['working_directory'],
+                                         options['job_type'] + '.auto.pid')
+            write_file(pid_file_name, str(process.pid))
         process.wait()
         sys.stdout.flush()
+        print 'Ensuring Wrapup...'
+        sleep(60)
+
+        if options['write_pid']:
+            delete_pid_file(pid_file_name)
 
         if process_out != sys.stdout:
             process_out.close()
@@ -324,13 +356,12 @@ def run(options):
     concatenated_output = os.path.join(options['working_directory'],
                                        input_file + '.cap.combined')
     print 'Creating Concatenated Output CAP3 Sequence File: %s' % concatenated_output
-    cat_file = open(concatenated_output, 'w')
-    for expected_output in [expected_output_contigs, expected_output_singlets]:
-        expected_output_file = open(expected_output, 'r')
-        for line in expected_output_file:
-            cat_file.write(line)
-        expected_output_file.close()
-    cat_file.close()
+    with open(concatenated_output, 'w') as cat_file:
+        for expected_output in [expected_output_contigs, expected_output_singlets]:
+            expected_output_file = open(expected_output, 'r')
+            for line in expected_output_file:
+                cat_file.write(line)
+            expected_output_file.close()
 
     if options['write_result_name']:
         report_name_file_name = os.path.join(options['working_directory'],

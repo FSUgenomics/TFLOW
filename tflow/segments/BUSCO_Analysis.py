@@ -22,7 +22,9 @@ if __name__ == "__main__" or __package__ is None:
     __package__ = "tflow.segments"
 
 from .parser_class import OutputParser
-from ..util import print_exit, print_except, write_file, write_report, percent_string, lowercase
+from ..util import (print_exit, print_except, write_file, write_report, delete_pid_file, 
+                    percent_string, lowercase, stop_TFLOW_process)
+from .. import util
 from .. import local_settings
 
 if hasattr(local_settings, 'BUSCO_LOCATION'):
@@ -74,6 +76,7 @@ TERMINAL_FLAGS = ['BUSCO Analysis Done']
 FAILURE_FLAGS = ['Exiting Early...',
                  'Traceback',
                  'Not Found',
+                 'Exception: ERROR',
                  ]
 DEFAULT_SETTINGS = {'working_directory':'BUSCO_Analysis',
                     'BUSCO_type':'vertebrata',
@@ -97,11 +100,13 @@ DEFAULT_SETTINGS = {'working_directory':'BUSCO_Analysis',
                     #TFLOW Writing Defaults, Used if Global Not Set
                     'write_report':True,
                     'write_command':True,
+                    'write_pid':True,
                     }
 
 REQUIRED_SETTINGS = ['blast_command_list', 'blast_db_command_list', 'working_directory', 
                      'copy_input_file', 'evalue', 'max_CPU', 'blast_result_file', 'evalue_cutoff',
-                     'print_missing_genes', 'write_command', 'write_report', 'print_matches']
+                     'print_missing_genes', 'write_command', 'write_report', 'write_pid', 
+                     'print_matches']
 
 REQUIRED_ANALYSIS_SETTINGS = ['blast_result_file', 'evalue_cutoff', 'print_missing_genes',
                               'print_matches', 'write_report']
@@ -128,6 +133,19 @@ def read(options):
     parser = Parser()
     parser.out_file = options['out_file']
     parser.read_or_notify()
+
+def stop(options):
+    job_pid_file = os.path.join(options['working_directory'],
+                                JOB_TYPE + '.auto.pid')
+    stop_TFLOW_process(job_pid_file, JOB_TYPE)
+
+def clean(options):
+    files = ['BUSCO_Make_DB.auto.sh', 'BUSCO_tblastn.auto.sh']
+    out_files = [options['blast_result_file']]
+    remove_outfile = (options['mode'] == 'reset')
+    util.clean_TFLOW_auto_files(options['job_type'], options['project_directory'],
+                                options['working_directory'], remove_outfile=remove_outfile, 
+                                confirm=options['confirm'], files=files, out_files=out_files)
 
 def test(options, silent=False):
     all_output = ''
@@ -246,11 +264,17 @@ def run(options):
                + 'Found in Zipped Format: %s' % full_BUSCO_file_name + '.gz')
         print 'Unzipping...'
         print ''
-        sys.stdout.flush()
+        sys.stdout.flush()       
         process = subprocess.Popen(['gunzip', full_BUSCO_file_name +'.gz'], stdout=sys.stdout, 
                                    stderr=sys.stderr, cwd=options['working_directory'])
+        if options['write_pid']:
+            pid_file_name = os.path.join(options['working_directory'],
+                                         options['job_type'] + '.auto.pid')
+            write_file(pid_file_name, str(process.pid))
         process.wait()
         sys.stdout.flush()
+        if options['write_pid']:
+            delete_pid_file(pid_file_name)
         print ''
 
     #Ensure Provided/Selected BUSCO File Exists
@@ -314,7 +338,16 @@ def run(options):
     try:
         process = subprocess.Popen(db_command_list, stdout=sys.stdout, stderr=sys.stderr,
                                    cwd=options['working_directory'])
+        if options['write_pid']:
+            pid_file_name = os.path.join(options['working_directory'],
+                                         options['job_type'] + '.auto.pid')
+            write_file(pid_file_name, str(process.pid))
+
         process.wait()
+
+        if options['write_pid']:
+            delete_pid_file(pid_file_name)
+
         sys.stdout.flush()
 
     except KeyboardInterrupt:
@@ -335,7 +368,7 @@ def run(options):
 
     #If Selected, Write Command to File
     if options['write_command']:
-        command_file = os.path.join(options['working_directory'], 'BUSCO_tblastn.auto.sh')
+        command_file = os.path.join(options['working_directory'], 'BUSCO_blastx.auto.sh')
         write_file(command_file, '#!/bin/sh\n' + command)
 
     #Perform BLAST Sequence Comparisons
@@ -345,7 +378,15 @@ def run(options):
     try:
         process = subprocess.Popen(command_list, stdout=sys.stdout, stderr=sys.stderr,
                                    cwd=options['working_directory'])
+        if options['write_pid']:
+            pid_file_name = os.path.join(options['working_directory'],
+                                         options['job_type'] + '.auto.pid')
+            write_file(pid_file_name, str(process.pid))
         process.wait()
+
+        if options['write_pid']:
+            delete_pid_file(pid_file_name)
+
         sys.stdout.flush()
 
     except KeyboardInterrupt:

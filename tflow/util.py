@@ -7,8 +7,10 @@
 #Project URL: http://www.github.com/fsugenomics/tflow
 
 import sys
-import os.path
+import os
 import subprocess
+import signal
+from time import sleep
 
 # --- Global Constants ---
 
@@ -18,20 +20,58 @@ FLEXIBLE_FALSE = ['False', 'false', 'F', 'f', '0']
 FLEXIBLE_TRUE = ['True', 'true', 'T', 't', '1']
 FLEXIBLE_BOOL = FLEXIBLE_FALSE + FLEXIBLE_TRUE
 ACTION_NAMES = {'run':'Running', 'track':'Tracking', 'analyze':'Analyzing', 
-                'read':'Reading', 'test':'Testing', 'track-analyze':'Tracking and Analyzing'}
+                'read':'Reading', 'test':'Testing', 'stop':'Stopping', 'clean':'Cleaning',
+                'reset':'Resetting'}
 DEFAULT_SETTINGS = {'TFLOW_Version':'0.9',
                     'write_analysis':True,
                     'write_settings':True,
                     'write_command':True,
                     'write_times':True,
                     'write_report':True,
+                    'write_pid':True,
                     'is_pipe':False,
                     'verbose':False,
                     'overwrite':False,
+                    'confirm':False,
                     'print_test_output':False,
                     }
 
 # --- Output Functions ---
+def print_pretty(in_var, indent=4):
+    if isinstance(in_var, dict):
+        max_key_len = len(max(in_var.keys(), key=len))
+        for key in in_var:
+            val = in_var[key]
+            if isinstance(val, str) or isinstance(val, bool) or val==None:
+                print (' ' * indent) + key.ljust(max_key_len) + ' ' + str(val)
+            else:
+                print (' ' * indent) + (str(key) + ':').ljust(max_key_len)
+                print_pretty(val, indent=indent+indent)
+
+    elif isinstance(in_var, list):
+        for item in in_var:
+            print (' ' * indent) + str(item)
+
+    elif isinstance(in_var, str):
+        print indent, in_var
+
+    else:
+        print indent, in_var
+
+def print_return(item):
+    if isinstance(item, str):
+        print item
+        return item
+    elif isinstance(item, list) or isinstance(item, tuple):
+        return_str = ''
+        for piece in item:
+            print piece
+            return_str += str(piece) + '\n'
+        return return_str
+    else:
+        print str(item)
+        return str(item)
+
 def print_except(message):
     print >> sys.stderr, message
     raise Exception(message)
@@ -52,24 +92,28 @@ def print_exit(message, code=1):
 
 
 def print_error(message, exit_code=-1):
-    if isinstance(message, list):
-        for piece in message:
-            print >> sys.stderr, 'ERROR:', piece
-    else:
-        print >> sys.stderr, 'ERROR:', message
-    sys.stderr.flush()
+    for output in [sys.stdout, sys.stderr]:
+        if isinstance(message, list):
+            for piece in message:
+                print >> output, 'ERROR:', piece
+        else:
+            print >> output, 'ERROR:', message
+        output.flush()
+
     if exit_code > -1:
         sys.exit(exit_code)
 
 def print_warning(message):
     import time
     time.sleep(0.2)
-    if isinstance(message, list):
-        for piece in message:
-            print >> sys.stderr, 'WARNING:', piece
-    else:
-         print >> sys.stderr, 'WARNING:', message
-    sys.stderr.flush()
+
+    for output in [sys.stdout, sys.stderr]:
+        if isinstance(message, list):
+            for piece in message:
+                print >> output, 'WARNING:', piece           
+        else:
+            print >> output, 'WARNING:', message
+        output.flush()
 
 def print_multi(*args):
     for arg in args:
@@ -103,12 +147,14 @@ def write_date_time(name, start=None):
 SEQUENCE_REPORT_SEPARATOR = '\t'
 SEQUENCE_REPORT_NULL_CHR = '-'
 REPORT_TYPES = {'sequence':'SEQUENCE FILE REPORT', 'recapture':'GENE RECAPTURE REPORT',
-                'unknown':'UNKNOWN REPORT TYPE'}
+                'annotation':'SEQUENCE ANNOTATION REPORT', 'unknown':'UNKNOWN REPORT TYPE'}
 SEQUENCE_REPORT_HEADERS = ['Count', 'Len', 'Av.Len', 'SRange', 'ERange', 'Median', 'N50']
 RECAPTURE_REPORT_HEADERS = ['Analys.', 'Cutoff', 'Expect.', 'Found', 'Missing', 'Total', 
                             'Percent']
+ANNOTATION_REPORT_HEADERS = ['Analys.', 'Cutoff', 'Seqs.', 'Records', 'Remapd.'] 
+                            
 
-def write_report(file_name, report, separator=SEQUENCE_REPORT_SEPARATOR):
+def write_report(file_name, report, separator=SEQUENCE_REPORT_SEPARATOR, aux_reports=[]):
     if isinstance(report, str):
         write_file(file_name, report)
         return
@@ -122,32 +168,44 @@ def write_report(file_name, report, separator=SEQUENCE_REPORT_SEPARATOR):
 
     if report_type == 'sequence':
         headers = SEQUENCE_REPORT_HEADERS
-
     elif report_type == 'recapture':
         headers = RECAPTURE_REPORT_HEADERS
-
+    elif report_type == 'annotation':
+        headers = ANNOTATION_REPORT_HEADERS
     else:
         headers = sorted(report.keys())
+
+    reports = [report] + list(aux_reports)
 
     f = open(file_name, 'w')
     f.write(report_type_string + '\n')
     f.write(separator.join(headers) + '\n')
     data_list = []
-    for header in headers:
-        if header in report:
-            data_list.append(report[header])
-        else:
-            data_list.append(SEQUENCE_REPORT_NULL_CHR)
-    f.write(separator.join(data_list) + '\n')
+    for report in reports:
+        for header in headers:
+            if header in report:
+                data_list.append(report[header])
+            else:
+                data_list.append(SEQUENCE_REPORT_NULL_CHR)
+        f.write(separator.join(data_list) + '\n')
+
     additional_headers = []
-    for key in report.keys():
-        if key not in (headers + ['report_type']):
-            additional_headers.append(key)
+    for report in reports:
+        for key in report.keys():
+            if key not in (headers + ['report_type']) and key not in additional_headers:
+                additional_headers.append(key)
 
     if additional_headers:
         f.write('\nAdditional Information:\n')
         f.write(separator.join(additional_headers) + '\n')
-        f.write(separator.join([report[key] for key in additional_headers]) + '\n')
+        for report in reports:
+            for header in additional_headers:
+                if header in report:
+                    aux_list.append(report[header])
+                else:
+                    aux_list.append(SEQUENCE_REPORT_NULL_CHR)
+            f.write(separator.join(aux_list) + '\n')
+        #f.write(separator.join([report[key] for key in additional_headers]) + '\n')
     f.close()
 
 def read_report(report, separator=SEQUENCE_REPORT_SEPARATOR):
@@ -170,23 +228,28 @@ def read_report(report, separator=SEQUENCE_REPORT_SEPARATOR):
 
 #Takes as input a list of tuples with values:
 # report = (report_name, report_type, header, data)
-def combine_report(reports, separator=SEQUENCE_REPORT_SEPARATOR):
+def combine_report(reports, read_separator=SEQUENCE_REPORT_SEPARATOR, write_separator=None):
     summary_report = ''
     last_report_type = None
     last_header = None
+    if write_separator == None:
+        write_separator = read_separator
 
     for report_name, report_type, header, data in reports:
+        header = header.replace(read_separator, write_separator)
         if report_type != last_report_type:
             summary_report += '\n' + report_type + 'S\n'
-            summary_report += 'Report' + SEQUENCE_REPORT_SEPARATOR + header + '\n'
+            summary_report += 'Report' + write_separator + header + '\n'
             last_report_type = report_type
             last_header = header
         elif header != last_header:
-            summary_report += '\nReport' + SEQUENCE_REPORT_SEPARATOR + header + '\n'
+            summary_report += '\nReport' + write_separator + header + '\n'
             last_header = header
-        summary_report += report_name[:7] + SEQUENCE_REPORT_SEPARATOR + data + '\n'
+        data = data.replace(read_separator, write_separator)
+        summary_report += report_name[:7] + write_separator + data + '\n'
 
     summary_report = summary_report.lstrip()
+    #sys.exit()
     return summary_report
 
 
@@ -269,9 +332,139 @@ def get_file_settings():
     return file_options
 
 
-def read_process_output(process):
-    for line in process.stdout:
-        print line.rstrip()
+# --- File Manipulation Functions ---
+def delete_pid_file(pid_file_name):
+    if 'pid' not in pid_file_name:
+        print_exit('Trying To Delete Non-PID File: %s' % pid_file_name)
+    if os.path.isfile(pid_file_name):
+        contents = read_file(pid_file_name)
+        if len(contents.splitlines()) > 1 or len(contents.split()) > 1:
+            print_exit('Trying To Delete Non-PID File: %s  ' % pid_file_name 
+                       + 'With Contents:', contents)
+        os.remove(pid_file_name)
+
+
+# --- Process Management Functions ---
+try:
+    import psutil
+    def process_exists(pid):
+        return psutil.pid_exists(pid)
+
+    def kill_process(pid):
+        psutil.process(pid).kill()
+
+except:
+    if sys.platform.startswith('linux'):
+        def process_exists(pid):
+            if not isinstance(pid, int):
+                try:
+                    pid = int(pid)
+                except:
+                    print_exit('Read Process ID: %s Cannot Be Converted to an Integer' % str(pid))
+            try:
+                os.kill(pid, 0)
+                return True
+            except OSError:
+                return False
+
+        def kill_process(pid):
+            if not isinstance(pid, int):
+                try:
+                    pid = int(pid)
+                except:
+                    print_exit('Read Process ID: %s Cannot Be Converted to an Integer' % str(pid))
+            os.kill(pid, signal.SIGKILL)
+            sleep(0.2)
+            while process_exists(pid):
+                print 'Continuing to Try to Kill Process %s.' % str(pid)
+                os.kill(pid, signal.SIGKILL)
+                sleep(1)
+
+    else:
+        print_exit('System Type: %s Not yet Supported. (Sorry!)' % sys.platform, 'If you are '
+                   + 'interested in using TFLOW on this type of system, please get in touch with '
+                   + 'the program author(s) and let them know!')
+
+
+def stop_TFLOW_process(pid_file, job_name):
+    if os.path.isfile(pid_file):
+        pid = read_file(pid_file)
+        print '    %s JOB-PID Found: %s  ' % (job_name, pid),
+        if process_exists(pid):
+            kill_process(pid)
+            print 'Process Killed.'
+        else:
+            print 'Process Not Active'
+    else:
+        print '    %s Job-PID Not Found.' % job_name
+
+AUTO_SUFFIXES = ['.auto.sh', '.auto.settings', '.auto.timing', '.auto.pid', '.auto.result_name']
+AUTO_OUT_SUFFIXES = ['.out', '.report']
+def clean_TFLOW_auto_files(job_type, project_dir, working_dir, remove_outfiles=True,
+                           confirm=False, dirs=[], files=[], prefixes=[], suffixes=[], 
+                           contains=[], out_dirs=[], out_files=[], out_prefixes=[], 
+                           out_suffixes=[], out_contains=[], 
+                           #Legacy
+                           remove_outfile=None, extra_files=[]):
+    #Legacy:
+    if remove_outfile != None:
+        remove_outfiles = remove_outfile
+
+    #To Implement:
+    #Prefixes
+    #Contains
+    #Dirs
+
+    dirs = list(dirs)
+    files = list(files)
+    prefixes = list(prefixes)
+    suffixes = list(suffixes)
+    contains = list(contains)
+    suffixes += list(AUTO_SUFFIXES)   
+
+    found_files = []
+    target_dirs = [project_dir]
+    if project_dir.rstrip('/') != working_dir.rstrip('/'):
+        target_dirs.append(working_dir)
+
+    #Legacy
+    files += extra_files
+
+    if remove_outfiles:
+        dirs += list(out_dirs)
+        files += list(out_files)
+        prefixes += list(out_prefixes)
+        suffixes += list(out_suffixes) + list(AUTO_OUT_SUFFIXES)
+        contains += list(out_contains)
+
+
+    for target_dir in target_dirs:
+        for suffix in suffixes:
+            expected_file = os.path.join(target_dir, (job_type + suffix))
+            if os.path.isfile(expected_file):
+                found_files.append(expected_file)
+
+        for file_name in files:
+            expected_file = os.path.join(target_dir, file_name)
+            if os.path.isfile(expected_file):
+                found_files.append(expected_file)
+
+    if found_files:
+        if confirm:
+            print 'Cleaning Files:'
+            print_pretty(found_files)
+            for found_file in found_files:
+                os.remove(found_file)
+            print 'Complete.'
+        else:
+            print 'Would Clean Files:'
+            print_pretty(found_files)
+            print 'Rerun with --confirm flag to perform cleaning.'
+    else:
+        print 'No Files Found to Clean.'
+
+
+
 
 # --- Formatting Functions ---
 
@@ -319,7 +512,6 @@ def percent_string(numerator, denominator):
         return 'N/A%'
     return '{0:.3g}'.format((float(numerator)/float(denominator))*100)+'%'
 
-
 def return_settings(options, message=None):
     return_string = ''
     if message:
@@ -336,6 +528,10 @@ def return_settings(options, message=None):
                 return_string += ('---- ' + sub_option.ljust(max_sublen) + ' '
                                   + str(sub_options[sub_option]) + '\n')
 
+        elif isinstance(options[option], list):
+            return_string += '-- %s\n' % option
+            for item in (options[option]):
+                return_string += '     %s\n' % item
         else:
             return_string += '-- ' + option.ljust(max_len) + ' ' + str(options[option]) + '\n'
 

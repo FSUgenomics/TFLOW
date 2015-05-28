@@ -11,7 +11,7 @@ import sys
 import re
 
 from collections import OrderedDict
-from .util import print_except, SI_prefix, percent_string, is_FASTA, is_FASTQ
+from .util import print_except, print_exit, SI_prefix, percent_string, is_FASTA, is_FASTQ
 
 
 #Fasta Database Class
@@ -49,7 +49,7 @@ class FASTA_DB():
         self.except_extra_lines = True
         self.except_duplicate_match = True
 
-    def add_sequence(self, name, contents):
+    def add_sequence(self, name, contents, line_number=-1):
         if name in self.sequences:
             if self.except_identical_name:
                 print_except('ERROR: Repeated Sequence Header: %s' % name)
@@ -65,6 +65,7 @@ class FASTA_DB():
         if not contents:
             if self.except_empty_contents:
                 print_except('ERROR: Sequence %s ' % name
+                             + 'from line: %s ' % str(line_number)
                              + 'has no detectable contents') 
             else:
                 print >> sys.stderr, ('ERROR: Sequence %s ' % name
@@ -83,9 +84,8 @@ class FASTA_DB():
         else:
             start_sequence_count = len(self.sequences)
 
-        line_count = 0
         print 'Reading File: %s' % file_name
-        f = open(file_name, 'r')
+        f = open(file_name, 'rb')
         
         f_enumerator = enumerate(f, start=1)        
         
@@ -103,7 +103,7 @@ class FASTA_DB():
                 print_except('FASTA File %s Formatted Incorrectly, ' % file_name
                              + 'Header Space Found at line %i.' % line_count)
             name = line.lstrip('>').strip()
-        
+            sequence_line = line_count
             (line_count, line) = f_enumerator.next()
 
         except StopIteration:
@@ -129,16 +129,17 @@ class FASTA_DB():
 
             if line.startswith('>'):
                 #Add Previous Sequence
-                self.add_sequence(name, contents)
+                self.add_sequence(name, contents, sequence_line)
 
                 #Start New Sequence 
                 name = line.lstrip('>').strip()
+                sequence_line = line_count
                 contents = ''
             else:
                 contents += line.strip()
 
         #Add Last Sequence
-        self.add_sequence(name, contents)
+        self.add_sequence(name, contents, sequence_line)
 
         if reset:
             self.in_file = file_name
@@ -149,7 +150,6 @@ class FASTA_DB():
         sequences_added = (len(self.sequences) - start_sequence_count)
 
         print '%i Sequences Read from File %s' % (sequences_added, file_name)
-
         return sequences_added
 
 
@@ -168,6 +168,21 @@ class FASTA_DB():
             print self.sequences[name]
             if space:
                 print ''
+
+    def get_details(self):
+        shortest = (10000000000, 'None')
+        longest = (0, 'None')
+        for name in self.sequences.keys():
+            sequence_length = len(self.sequences[name])
+            if sequence_length < shortest[0]:
+                shortest = (sequence_length, name)
+            if sequence_length > longest[0]:
+                longest = (sequence_length, name)
+
+        report =  'Shortest Sequence: %i bp,\t%s\n' % shortest 
+        report += 'Longest Sequence:  %i bp,\t%s\n' % longest
+
+        return report
 
     def _OLD_Read_FromFASTQ(self, file_name, verify=True):
         if os.path.isfile(file_name):
@@ -606,7 +621,7 @@ def check_N50_in_place(file_name, fail_exit=True, return_report=False, return_re
 
 def label_sequences(in_file_name, label, out_file_name=None):
     if not os.path.isfile(in_file_name):
-        print 'File Does Not Exist.'
+        print 'File %s Does Not Exist.' % in_file_name
         return False
 
     print 'Adding Label: %s to Sequences in File: %s' % (label, in_file_name)
@@ -619,4 +634,17 @@ def label_sequences(in_file_name, label, out_file_name=None):
         out_file_name = in_file_name + '.labeled'
 
     database.write_file(out_file_name)
+    return True
+
+
+def details(in_file_name):
+    if not os.path.isfile(in_file_name):
+        print 'File %s Does Not Exist.' % in_file_name
+        return False
+
+    database = FASTA_DB()
+    database.read_file(in_file_name)
+    print ''
+    details = database.get_details()
+    print details
     return True

@@ -48,15 +48,18 @@ The TFLOW pipeline is designed with several key features in mind:
 
 
  --- Operation ---
-TFLOW 0.9.1 has 6 modes:
+TFLOW 0.9.2 has 9 modes:
     run	      	    Run Job/Pipe
     track	    Track Job/Pipe
     analyze	    Analyze Job/Pipe
     read 	    Read Output of Job/Pipe
     test	    Test Job/Pipe
-    print_settings  Print Current TFLOW Settings
+    stop	    Stop Running Job/Pipe
+    clean	    Cleanup (Most) Standard Job/Pipe Files (Beta)
+    reset	    Reset (Almost) All Job/Pipe Files Including Output (Beta)
+    settings	    Print Current TFLOW Settings and Exit
 
-TFLOW 0.9.1 has 5 Supported Pipes:
+TFLOW 0.9.2 has 5 Supported Pipes:
     Trinity_Pipe         Trim Reads, Trinity-Assemble, CAP3-Assemble, CEGMA Analysis, 
                              and BUSCO Analysis
     Trimmed_Trinity_Pipe Trinity-Assemble, CAP3-Assemble, CEGMA Analysis, and BUSCO Analysis
@@ -64,15 +67,15 @@ TFLOW 0.9.1 has 5 Supported Pipes:
     Analysis_Pipe	 Stat_Analysis, CEGMA Analysis and BUSCO Analysis
     Test_Pipe		 Non-Functional Pipe for Testing All Supported Segments
 
-TFLOW 0.9.1 has 8 Supported Pipes Segments:
+TFLOW 0.9.2 has 8 Supported Pipes Segments:
     Make_Read_Lists (v0.9)   Simple Parser From Read Files to Read File Lists
     Trimmomatic (v0.32)      Read Trimming Utilityad Output of Job/Pipe
     Trinity (v20140717)      De-Novo Transcriptome Assembler
     CAP3                     Sequence Assembler
+    Package (v0.9)  	     Copy and Zip Final Sequence File Result
     Stat_Analysis (v0.9)     Perform Statistical Analysis on FASTA File Sequences
     CEGMA_Analysis (v2.2.29) Core Eukaryotic Gene Recapture Analysis via NCBI Blast
     BUSCO_Analysis (v2.2.29) Benchmarking Gene Recapture Analysis via NCBI Blast
-    Package (v0.9)  	     Copy and Zip Final Sequence File Result
     Summary (v0.9)  	     Summarize Pipe Results
 
  --- External Components ---
@@ -139,6 +142,14 @@ The priority hierarchy of options is given by:
 
 
 --- Version History ---
+2015-??-??, V.0.9.2
+    Added "details" Mode to fasta_manip.py for Shortest/Longest Read Identification
+    Added CSV outputting to Summary module
+    Added prototype "reset" Mode for Deleting All Identified Segment Output Files
+    Added prototype "clean" Mode for Deleting Unnecessary Segment Output Files
+    Added "stop" Mode for Stopping Running Pipes and Segments
+    Bug Fixes
+
 2015-05-12, V.0.9.1
     Added Stat_Analysis Segment
     Added Package Segment

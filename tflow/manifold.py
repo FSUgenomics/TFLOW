@@ -20,10 +20,13 @@ if __name__ == "__main__" and __package__ is None:
     __package__ = "tflow"
 
 from .util import (get_file_settings, print_warning, print_except, print_multi, print_exit,
-                   write_file, print_settings, write_settings, write_date_time, lowercase, 
-                   flexible_boolean_string, BOOL, FLEXIBLE_BOOL, ACTION_NAMES, DEFAULT_SETTINGS)
+                   write_file, print_settings, write_settings, write_date_time, read_file, 
+                   process_exists, kill_process, lowercase, flexible_boolean_string, BOOL, 
+                   FLEXIBLE_BOOL, ACTION_NAMES, DEFAULT_SETTINGS)
+from . import util
 
-MODES = ['track', 'analyze', 'run', 'read', 'test', 'stop', 'print_settings']
+MODES = ['track', 'analyze', 'run', 'read', 'test', 'stop', 'clean', 'reset', 
+         'settings']
 NULL_OUT_FILES = ['N/A', 'n/a', 'NA', 'na', 'None', 'none', None, '']
 READ_TYPES = ['fq', 'fa']
 JOB_TYPES = []
@@ -44,6 +47,9 @@ def parse_args():
                             help='Verbose Line Output', dest='verbose')
     tflow_args.add_argument('--overwrite', action='store', default=None, 
                             type=flexible_boolean_string, help='Overwrite Previous Outputs', 
+                            choices=BOOL, metavar='BOOL')
+    tflow_args.add_argument('--confirm', action='store', nargs='?', default=None, const=True, 
+                            type=flexible_boolean_string, help='Confirm Action', 
                             choices=BOOL, metavar='BOOL')
     tflow_args.add_argument('--is_paired_reads', action='store', default=None, 
                             type=flexible_boolean_string,
@@ -143,8 +149,7 @@ def get_settings():
                 
     for required_arg in required:
         if required_arg not in settings:
-            print required[required_arg]
-            sys.exit(1)           
+            print_exit('TFLOW: ' + required[required_arg])
 
     segments_module = __import__('tflow.segments', fromlist=[settings['job_type']])
     pipes_module = __import__('tflow.pipes', fromlist=[settings['job_type']])
@@ -176,7 +181,8 @@ def flow(options, check_done=False):
         else:
             print_except('For Job Type %s, No Output File Given.' % job_type)
 
-    if 'working_directory' in options and options['working_directory'] not in [None, 'None', 'none', 'N/A', 'n/a']:
+    if ('working_directory' in options and 
+        options['working_directory'] not in [None, 'None', 'none', 'N/A', 'n/a']):
         working_directory = options['working_directory']
         if out_file:
             out_file = os.path.join(working_directory, out_file)
@@ -186,15 +192,21 @@ def flow(options, check_done=False):
                                                       options['working_directory'])
                 print 'Making New Working Directory for Run: %s' % options['working_directory']
                 os.makedirs(full_working_directory)
-            elif options['mode'] not in ['test']:
+            elif options['mode'] not in ['test', 'clean', 'reset']:
                 print_warning('Working Directory %s Not Found.' % working_directory)
 
     else:
         working_directory = ''
 
     if (out_file and os.path.basename(out_file) not in NULL_OUT_FILES 
-        and not os.path.isfile(out_file) and job_options['mode'] not in ['run', 'test']):
-        print_exit(['Job Output File %s Not Found...' % out_file], 1)
+        and not os.path.isfile(out_file) and job_options['mode'] not in ['run', 'test', 'clean',
+                                                                         'reset']):
+        print 'Output File %s' % out_file
+        print '    for Next Job Step: "%s"  Not Found...' % job_options['job_type']
+        if options['mode'] in ['analyze', 'track']:
+            print_exit('Output File Expected to Exist')
+        else:
+            print_exit('Job Has Not Yet Reached This Point.', 0) 
 
     job_options['out_file'] = out_file
     terminal_output = (sys.stdout, sys.stderr)
@@ -238,7 +250,7 @@ def flow(options, check_done=False):
     elif options['mode'] == 'track':
         print_multi('', 'Tracking %s Job...' % job_type, '')
         if not hasattr(module, 'track'):
-            print_except('Job Type %s Has No Track Method.' % job_type)
+            print_except('Job Type %s Has No "track" Method.' % job_type)
 
         try:
             module.track(job_options)
@@ -250,7 +262,7 @@ def flow(options, check_done=False):
     elif options['mode'] == 'analyze':
         print_multi('Analyzing %s Job...' % job_type, '')
         if not hasattr(module, 'analyze'):
-            print_except('Job Type %s Has No Analyze Method.' % job_type)
+            print_except('Job Type %s Has No "analyze" Method.' % job_type)
 
         try:
             analysis = module.analyze(job_options)
@@ -267,7 +279,7 @@ def flow(options, check_done=False):
     elif options['mode'] == 'read':
         print_multi('Reading %s Job...' % job_type, '')
         if not hasattr(module, 'read'):
-            print_except('Job Type %s Has No Read Method.' % job_type)
+            print_except('Job Type %s Has No "read" Method.' % job_type)
 
         try:
             analysis = module.read(job_options)
@@ -279,7 +291,7 @@ def flow(options, check_done=False):
     elif options['mode'] == 'test':
         print_multi('Testing %s Job...' % job_type, '')
         if not hasattr(module, 'test'):
-            print_except('Job Type %s Has No Test Method.' % job_type)
+            print_except('Job Type %s Has No "test" Method.' % job_type)
 
         try:
             output = module.test(job_options)
@@ -289,6 +301,20 @@ def flow(options, check_done=False):
         except KeyboardInterrupt:
             (sys.stdout, sys.stderr) = terminal_output
             print_exit(['', 'Testing Stopped.'], 2)
+
+    elif options['mode'] == 'stop':
+        print_multi('Attempting to Stop %s Job...' % job_type, '')
+        if not hasattr(module, 'stop'):
+            print_except('Job Type %s Has No "stop" Method.' % job_type)
+
+        module.stop(job_options)
+
+    elif options['mode'] in ['clean', 'reset']:
+        print_multi('Cleaning Files for %s Job...' % job_type, '')
+        if not hasattr(module, 'clean'):
+            print_except('Job Type %s Has No "clean" Method.' % job_type)
+
+        module.clean(job_options)
 
 
     print ''
@@ -300,7 +326,7 @@ def segment(options):
     if job_type in options:
         job_dict = options[job_type]
         for setting in job_dict:
-            if setting in options:               
+            if setting in options and job_dict[setting] != options[setting]:               
                 print_warning('Option:  "%s"  with' % setting
                               + ' value: "%s"  Being Overridden' % options[setting]
                               + ' for job  "%s" ' % job_type
@@ -341,7 +367,7 @@ def segment(options):
             flow(options)
             print '    %s Analysis Complete.' % job_type
 
-    elif options['mode'] in ['test', 'read', 'stop']:
+    elif options['mode'] in ['test', 'read', 'stop', 'clean', 'reset']:
         flow(options)
 
     else:
@@ -375,7 +401,7 @@ def manifold(options):
     #Add List of steps to options.
         options['pipe_steps'] = list(pipe_steps)
 
-    #If Running, Write Timing and Settings
+    #If Running, Write Timing, Settings, and PID
     if options['mode'] == 'run':
         if options['write_settings']:
             pipe_settings_file_name = os.path.join(options['project_directory'], 
@@ -386,6 +412,32 @@ def manifold(options):
             pipe_time_file = os.path.join(options['project_directory'], 
                                      options['job_type'] + '.auto.timing')
             pipe_start_time = write_date_time(pipe_time_file)
+
+        if options['write_pid']:
+            pipe_pid_file = os.path.join(options['project_directory'],
+                                         options['job_type'] + '.auto.pid')
+            write_file(pipe_pid_file, str(os.getpid()))
+
+    #If Stopping a Pipe, Find/Stop Running Pipe Process
+    if options['mode'] == 'stop':
+        pipe_pids = {'TFLOW '+options['job_type']+' Pipe':options['job_type']+'.auto.pid',
+                     'Submission':'job.pid'}
+
+        for pid_name in sorted(pipe_pids.keys()):
+            pipe_pid_file = os.path.join(options['project_directory'], pipe_pids[pid_name])
+            if os.path.isfile(pipe_pid_file):
+                pipe_pid = read_file(pipe_pid_file)
+                print 'Found %s Job-PID: %s' % (pid_name, pipe_pid)
+                if process_exists(pipe_pid):
+                    kill_process(pipe_pid)
+                    print '    Pipe Process Killed.'
+                else:
+                    print '    Process Not Active'
+            else:
+                print '%s Job-PID (%s) Not Found.' % (pid_name, pipe_pids[pid_name])
+
+            print ''
+
 
     #Perform Each Step
     for step in pipe_steps:
@@ -401,7 +453,8 @@ def manifold(options):
         if step in options:
             step_dict = options[step]
             for setting in step_dict:
-                if setting in step_run_options:
+                if (setting in step_run_options 
+                    and step_dict[setting] != step_run_options[setting]):
                     print_warning('Option  "%s" ' % setting
                                   + ' for step  "%s" ' % step
                                   + ' value "%s"' % str(step_run_options[setting])
@@ -413,13 +466,15 @@ def manifold(options):
         #Add Pipe-Specific Step Settings to Segment Settings
         for setting in pipe_step_options:
             #If pipe-specific option already given, print warning and override.
-            if setting in step_run_options:
+            if (setting in step_run_options 
+                and pipe_step_options[setting] != step_run_options[setting]):
                 print_warning('Option  "%s" ' % setting
                               + ' with Value:  "%s" ' % step_run_options[setting]
                               + ' is Being Overridden for Pipe Step  "%s" ' % step
                               + ' by Pipe Setting Value:  "%s" ' % pipe_step_options[setting])
             step_run_options[setting] = pipe_step_options[setting]
 
+        #Set Absolute Working Directory
         if 'working_directory' in pipe_step_options:
             full_working_directory = os.path.join(options['project_directory'], 
                                                   pipe_step_options['working_directory']) 
@@ -430,8 +485,13 @@ def manifold(options):
 
         step_run_options['job_type'] = step
 
-        step_done = flow(step_run_options, check_done=True)
+        #If Necessary, Check if Step is Already Completed
+        if options['mode'] in ['test', 'read', 'stop', 'clean', 'reset']:
+            step_done = None
+        else:
+            step_done = flow(step_run_options, check_done=True)
 
+        #Perform Action on Step
         if options['mode'] == 'run':
             if step_done and not options['overwrite']:
                 print 'Running %s Job.\n\n    %s Job Already Complete.' % (step, step)
@@ -454,7 +514,7 @@ def manifold(options):
                 flow(step_run_options)
                 print '%s Analysis Complete.' % step
 
-        elif options['mode'] in ['test', 'read', 'stop']:
+        elif options['mode'] in ['test', 'read', 'stop', 'clean', 'reset']:
             flow(step_run_options)
  
         else:
@@ -463,11 +523,13 @@ def manifold(options):
         print ''
         sys.stdout.flush()
 
-    #Write End Time of Pipe
-    if options['mode'] == 'run' and options['write_times']:
-        write_date_time(pipe_time_file, start=pipe_start_time)
+    #If Running, Write End Time of Pipe and Delete PID
+    if options['mode'] == 'run':
+        if options['write_times']:
+            write_date_time(pipe_time_file, start=pipe_start_time)
 
-
+        if options['write_pid']:
+            util.delete_pid_file(pipe_pid_file)
 
 
 if __name__ ==  '__main__':
@@ -479,8 +541,8 @@ if __name__ ==  '__main__':
 
     print ''
 
-    if options['mode'] == 'print_settings':
-        print_settings(options, 'TFLOW Conductor Options:')
+    if options['mode'] == 'settings':
+        print_settings(options, 'TFLOW Manifold Options:')
         print ''
         sys.exit(0)
 

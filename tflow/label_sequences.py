@@ -12,6 +12,8 @@
 import argparse
 
 if __name__ == "__main__" and __package__ is None:
+    import sys
+    sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../'))
     import tflow
     __package__ = "tflow"
 
