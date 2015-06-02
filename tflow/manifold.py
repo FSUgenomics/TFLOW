@@ -439,6 +439,17 @@ def manifold(options):
             print ''
 
 
+    #If Cleaning, Clean Pipe Files
+    if options['mode'] in ['clean', 'reset']:
+        print 'Cleaning Files for %s...' % options['job_type']
+        print ''
+        util.clean_TFLOW_auto_files(options['job_type'], options['project_directory'], 
+                                    options['project_directory'], 
+                                    remove_outfile=(options['mode']=='reset'), 
+                                    confirm=bool(options['confirm']), files=['job.pid'])
+        print ''
+        print ''
+
     #Perform Each Step
     for step in pipe_steps:
         step_run_options = deepcopy(options)

@@ -123,6 +123,14 @@ def stop(options):
 def clean(options):
     files = ['CEGMA.phr', 'CEGMA.psq', 'CEGMA_Make_DB.auto.sh', 
              'CEGMA.pin', 'CEGMA_tblastn.auto.sh']
+
+    if options['copy_input_file']:
+        for file_type in ['absolute_input_analysis_file', 'rel_input_analysis_file']:
+            if file_type in options:
+                files.append(os.path.basename(os.path.join(options['working_directory'],
+                                                           options[file_type])))
+                break
+
     out_files = [options['blast_result_file']]
     remove_outfile = (options['mode'] == 'reset')
     util.clean_TFLOW_auto_files(options['job_type'], options['project_directory'],

@@ -140,12 +140,11 @@ class OutputParser():
             last_line = subprocess.check_output(['tail', '-n', '1', self.out_file])
 
         else:
-            out_file = open(self.out_file, 'r')
-            ouput = out_file.readlines()
-            out_file.close()
-            last_line = output[-1]
-
-        return last_line != self.last_line
+            with open(self.out_file, 'r') as out_file:
+                for line in out_file:
+                    pass
+                last_line= line
+        return (last_line.strip() != self.last_line.strip())
 
     #Returns True if Not Yet Terminated
     def check(self, all_print=True):

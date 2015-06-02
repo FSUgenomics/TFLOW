@@ -399,7 +399,7 @@ def stop_TFLOW_process(pid_file, job_name):
         print '    %s Job-PID Not Found.' % job_name
 
 AUTO_SUFFIXES = ['.auto.sh', '.auto.settings', '.auto.timing', '.auto.pid', '.auto.result_name']
-AUTO_OUT_SUFFIXES = ['.out', '.report']
+AUTO_OUT_SUFFIXES = ['.out', '.report', '.auto.analysis']
 def clean_TFLOW_auto_files(job_type, project_dir, working_dir, remove_outfiles=True,
                            confirm=False, dirs=[], files=[], prefixes=[], suffixes=[], 
                            contains=[], out_dirs=[], out_files=[], out_prefixes=[], 

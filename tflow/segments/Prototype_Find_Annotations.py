@@ -24,6 +24,8 @@ from .parser_class import OutputParser
 from ..util import print_exit, print_return
 from .. import util
 from .. import local_settings
+from ..annotation import (Annotation, Annotation_Record, Annotation_Database, 
+                          Annotation_Map, Name_Map)
 
 if hasattr(local_settings, 'BLAST_LOCATION'):
     BLAST_LOCATION = local_settings.BLAST_LOCATION
@@ -46,7 +48,7 @@ else:
     MAKE_BLAST_DB_EXEC = os.path.join(MAKE_BLAST_DB_LOCATION, 'makeblastdb')
 
 
-JOB_TYPE = 'Annotate'
+JOB_TYPE = 'Prototype_Find_Annotations'
 PROGRAM_URL = 'http://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download'
 SEGMENT_FOR_VERSION = '2.2.29'
 BLAST_COMMAND = BLAST_EXEC
@@ -54,7 +56,7 @@ BLAST_COMMAND_LIST = [BLAST_COMMAND]
 BLAST_DB_COMMAND = MAKE_BLAST_DB_EXEC
 BLAST_DB_COMMAND_LIST = [BLAST_DB_COMMAND]
 TEST_COMMAND = '-h'
-OUT_FILE = 'Annotate.out'
+OUT_FILE = 'Prototype_Find_Annotations.out'
 MILESTONES = ['Annotation Complete']
 TERMINAL_FLAGS = []
 FAILURE_FLAGS = ['Exiting Early...',
@@ -75,6 +77,7 @@ DEFAULT_SETTINGS = {'copy_input_file':False,
                     'max_matches':'5',
                     'write_all_matches':True,
                     'write_best_matches':True,
+                    'verbose_tracking':True,
                     #'reference_type':'nucl',
                     #TFLOW Settings
                     'blast_command':BLAST_COMMAND,
@@ -98,12 +101,140 @@ REQUIRED_SETTINGS = ['blast_command_list', 'blast_db_command_list', 'working_dir
 REQUIRED_ANALYSIS_SETTINGS = ['blast_result_file', 'evalue_cutoffs', 'write_report', 
                               'write_all_matches', 'write_best_matches']
 
+OPTIONAL_TRACKING_SETTINGS = ['working_directory', 'blast_result_file']
+
+
 class Parser(OutputParser):
     def set_local_defaults(self):
         self.milestones = MILESTONES
         self.terminal_flags = TERMINAL_FLAGS
         self.failure_flags = FAILURE_FLAGS
         self.job_type = JOB_TYPE
+
+    def check_queries_processed(self, blast_file_name):
+        count = 0
+        if self.shell_tracking:
+            string_count = subprocess.check_output(['grep', '-c', '# Query:', blast_file_name])
+            count = int(string_count.strip())
+        else:
+            with open(blast_file_name, 'r') as blast_file:
+                for line in blast_file:
+                    if line.startswith('# Query:'):
+                        count += 1
+        return count
+
+    def annotation_track(self, options, loud=False):
+        from time import sleep
+        if 'verbose_tracking' in options and options['verbose_tracking']:
+            verbose_tracking = True
+            #Ensure Required Settings in Options
+            for optional_option in OPTIONAL_TRACKING_SETTINGS:
+                if optional_option not in options:
+                    print 'Optional Option: %s for %s tracking not given.' % (optional_option, 
+                                                                              JOB_TYPE)
+                    print 'Defaulting to non-verbose tracking.'
+                    verbose_tracking = False
+        else:
+            verbose_tracking = False
+        
+        if verbose_tracking:
+            print 'Attempting to Initiate Verbose Annotation Tracking:'
+            print ''
+
+        #Ensure Working Directory Exists
+        if verbose_tracking and not os.path.isdir(options['working_directory']):
+            print 'Working Directory: %s Not Found.' % options['working_directory']
+            print 'Defaulting to non-verbose tracking.'
+            verbose_tracking = False
+
+        #Ensure A Type of Query Sequence File is Given
+        if verbose_tracking and not any(x in options for x in ['absolute_input_analysis_file',
+                                                               'rel_input_analysis_file',
+                                                               'input_analysis_file',
+                                                               'result_name_file']):
+            print ('Either input_analysis_file, absolute_input_analysis_file,'
+                   + ' rel_input_analysis_file, or result_name_file paramater required.')
+            print 'Defaulting to non-verbose tracking.'
+            verbose_tracking = False
+
+        #Assign Correct Input File Name
+        if verbose_tracking:
+            if 'input_analysis_file' in options:
+                if os.path.isabs(options['input_analysis_file']):
+                    full_input_file = options['input_analysis_file']
+                else:
+                    full_input_file = os.path.join(options['working_directory'], 
+                                                   options['input_analysis_file'])
+                                                   
+            elif 'absolute_input_analysis_file' in options:
+                full_input_file = options['absolute_input_analysis_file']
+
+            elif 'rel_input_analysis_file' in options:
+                full_input_file = os.path.join(options['project_directory'], 
+                                               options['rel_input_analysis_file'])
+
+            elif 'result_name_file' in options:
+                full_result_name_file = os.path.join(options['project_directory'], 
+                                                     options['result_name_file'])
+                if not os.path.isfile(full_result_name_file):
+                    print('Provided File: %s Containing' % full_result_name_file  
+                          + ' Result Sequence File Name Not Found.')
+                    print 'Defaulting to non-verbose tracking.'
+                    verbose_tracking = False
+
+                if verbose_tracking:
+                    rf = open(full_result_name_file, 'r')
+                    full_input_file = rf.read().strip()
+                    rf.close()
+
+                    if not os.path.isfile(full_input_file):
+                        print('Cannot Find Read Result Sequence File: %s' % full_input_file)
+                        print 'Defaulting to non-verbose tracking.'
+                        verbose_tracking = False
+
+        if verbose_tracking:
+            input_file = os.path.basename(full_input_file)
+            if not any(x(full_input_file) for x in [util.is_FASTA, util.is_FASTA_GZ]):
+                print 'File: %s is not a FASTA File.' % full_input_file
+                print 'Defaulting to non-verbose tracking.'
+                verbose_tracking = False
+
+        if verbose_tracking:
+            #Set BLAST Output File
+            blast_file = options['blast_result_file']
+            full_blast_file = os.path.join(options['working_directory'], blast_file)
+
+            #Check that Blast File Exists
+            if not os.path.isfile(full_blast_file):
+                print 'Input Reference Sequence File: %s Not Found.' % full_blast_file
+                print 'Defaulting to non-verbose tracking.'
+                verbose_tracking = False
+
+        if verbose_tracking:
+            num_query_sequences = util.count_FASTA_all(full_input_file)
+            print 'Verbose Tracking Successfully Initiated.'
+            print 'Query Sequences:', num_query_sequences
+        else:
+            num_query_sequences = 0
+
+        num_queries_processed = 0
+        new_queries_processed = 0
+        while self.running:
+            if verbose_tracking:
+                new_queries_processed = self.check_queries_processed(full_blast_file)
+            if self.check_updated() or num_queries_processed != new_queries_processed:
+                #print 'Updated:', self.check_updated()
+                #print 'Num_Queries_New:',  num_queries_processed != new_queries_processed
+                self.running = self.check(loud)
+                if verbose_tracking:
+                    print new_queries_processed, '/', num_query_sequences, 
+                    print '(%s)' % util.percent_string(new_queries_processed, 
+                                                       num_query_sequences),
+                    print 'Query Sequences Processed.'
+                    num_queries_processed = new_queries_processed
+            if self.running:
+                sleep(self.sleep_time)
+
 
 def check_done(options):
     parser = Parser()
@@ -114,7 +245,7 @@ def check_done(options):
 def track(options):
     parser = Parser()
     parser.out_file = options['out_file']
-    parser.track()
+    parser.annotation_track(options)
 
 def read(options):
     parser = Parser()
@@ -127,14 +258,22 @@ def stop(options):
     util.stop_TFLOW_process(job_pid_file, JOB_TYPE)
 
 def clean(options):
-    suffixes = ['.auto.make_db.sh', '.auto.blastx.sh']
-    out_suffixes = ['.phr', '.pin', '.psq']
-    out_files = [options['blast_result_file']]
+    suffixes = ['.auto.blastx.sh', '.auto.make_db.sh']
+    files = []
+    out_files = [options['blast_result_file'], MATCH_PREFIX+'.All.annDB', 
+                 MATCH_PREFIX+'.Best.annDB', ANNOTATION_PREFIX+'.All.annDB']
+    if 'evalue_cutoffs' in options and isinstance(options['evalue_cutoffs'], list):
+        for evalue_cutoff in options['evalue_cutoffs']:
+            out_files.append(ANNOTATION_PREFIX + '.' + evalue_cutoff + '.annDB')
+    if 'db_title' in options:
+        for suffix in ['.phr', '.pin', '.psq']:
+            files.append(options['db_title'] + suffix)
+
     remove_outfile = (options['mode'] == 'reset')
     util.clean_TFLOW_auto_files(options['job_type'], options['project_directory'],
                                 options['working_directory'], remove_outfile=remove_outfile, 
-                                confirm=options['confirm'], suffixes=suffixes, 
-                                out_suffixes=out_suffixes, out_files=out_files)
+                                confirm=options['confirm'], suffixes=suffixes, files=files,
+                                out_files=out_files)
 
 def test(options, silent=False):
     all_output = ''
@@ -327,6 +466,7 @@ def run(options):
     else:
         print 'Using Input File: %s' % full_input_file 
         working_input_file = full_input_file
+        print 'Input File Has %i Detected Query Sequences.' % util.FASTA_all(working_input_file)
 
     if options['reference_type'] in REFERENCE_TYPES:
         print 'Reference Type: %s (%s) Selected.' % (options['reference_type'], 
@@ -434,9 +574,6 @@ def run(options):
 #Analyze Results of Sequence Comparison
 def analyze(options):
     analysis = print_return(['Performing Annotation Analysis on BLAST Result.', ''])
-
-    from tflow.annotation import (Annotation, Annotation_Record, Annotation_Database, 
-                                  Annotation_Map, Name_Map)
 
     #Ensure Required Settings in Options
     for required_option in REQUIRED_ANALYSIS_SETTINGS:

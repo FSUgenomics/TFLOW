@@ -126,12 +126,12 @@ def stop(options):
 
 def clean(options):
     remove_outfile = (options['mode'] == 'reset')
-    out_files = [options['single_reads_list'], options['left_reads_list'], 
+    files = [options['single_reads_list'], options['left_reads_list'], 
                  options['right_reads_list']]
 
     util.clean_TFLOW_auto_files(options['job_type'], options['project_directory'],
                                 options['working_directory'], remove_outfile=remove_outfile, 
-                                confirm=options['confirm'], out_files=out_files)
+                                confirm=options['confirm'], files=files)
 
 def test(options, silent=False):
     try:
