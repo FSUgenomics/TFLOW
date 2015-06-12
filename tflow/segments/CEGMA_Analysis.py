@@ -227,25 +227,15 @@ def run(options):
         print ''
 
     #If CEGMA Sequence File is Zipped, Unzip it
-    if os.path.isfile(options['CEGMA_file'] +'.gz'):
+    if not os.path.isfile(options['CEGMA_file']) and os.path.isfile(options['CEGMA_file'] +'.gz'):
         print ('\nProvided CEGMA File: %s' % options['CEGMA_file']
                + 'Found in Zipped Format: %s' % options['CEGMA_file'] + '.gz')
         print 'Unzipping...'
         print ''
-        process = subprocess.Popen(['gunzip', options['CEGMA_file'] +'.gz'], stdout=sys.stdout,
-                                   stderr=sys.stderr, cwd=options['working_directory'])
-        if options['write_pid']:
-            pid_file_name = os.path.join(options['working_directory'],
-                                         options['job_type'] + '.auto.pid')
-            write_file(pid_file_name, str(process.pid))
-
-        process.wait()
-
-        if options['write_pid']:
-            delete_pid_file(pid_file_name)
-
         sys.stdout.flush()
-        print ''
+        with gzip.open(options['CEGMA_file'] + '.gz', 'r') as zipped_CEGMA, \
+             open(options['CEGMA_file'], 'w') as unzipped_CEGMA:
+            unzipped_CEGMA.writelines(zipped_CEGMA)
 
     #Ensure CEGMA Sequence File Exists
     if os.path.isfile(options['CEGMA_file']):

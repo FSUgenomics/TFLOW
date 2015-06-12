@@ -18,7 +18,8 @@ if __name__ == "__main__" and __package__ is None:
     import tflow
     __package__ = "tflow"
 
-from .util import count_sequences, is_sequence_file, print_exit
+#from .util import count_sequences, is_sequence_file, print_exit
+from . import util
 
 def parse_count_sequences_args():
     parser = argparse.ArgumentParser(prog='count_sequences.py',
@@ -32,17 +33,17 @@ if __name__ == '__main__':
     contents = options['contents']
     for item in contents:
         if '*' in item:
-            print_exit(['Argument: ( %s ) contains invalid symbol "*".',
-                       'Was file name input correctly?',
-                        ''], 1)
+            util.print_exit(['Argument: ( %s ) contains invalid symbol "*".',
+                             'Was file name input correctly?',
+                             ''], 1)
                        
     if not contents:
         contents = []
         for file_name in os.listdir(os.getcwd()):
-            if is_sequence_file(file_name):
+            if util.is_sequence_file(file_name):
                 contents.append(file_name)
 
     if not contents:
-        print_exit(['No Sequence Files Found.', ''], 1)
+        util.print_exit(['No Sequence Files Found.', ''], 1)
 
-    count_sequences(contents)
+    util.count_sequences(contents)

@@ -114,8 +114,12 @@ class Parser(OutputParser):
     def check_queries_processed(self, blast_file_name):
         count = 0
         if self.shell_tracking:
-            string_count = subprocess.check_output(['grep', '-c', '# Query:', blast_file_name])
-            count = int(string_count.strip())
+            try:
+                string_count = subprocess.check_output(['grep', '-c', '# Query:', 
+                                                        blast_file_name])
+                count = int(string_count.strip())
+            except subprocess.CalledProcessError:
+                util.print_warning('Problem with Shell Query Checking? Continuing...')
         else:
             with open(blast_file_name, 'r') as blast_file:
                 for line in blast_file:
@@ -407,42 +411,21 @@ def run(options):
     reference_file = os.path.basename(full_reference_file)
 
     #If Selected Reference File is Zipped, Unzip it
-    if os.path.isfile(full_reference_file +'.gz'):
-        print ('\nSelected Reference File: %s' % full_reference_file
-               + 'Found in Zipped Format: %s' % full_reference_file + '.gz')
+    if (full_reference_file.endswith('.gz') and os.path.isfile(full_reference_file)
+        and not os.path.isfile_full_reference_file[:-3])
+        print '\nSelected Reference File: %s is Zipped.' % full_reference_file 
         print 'Unzipping...'
         print ''
         sys.stdout.flush()       
-        process = subprocess.Popen(['gunzip', full_reference_file +'.gz'], 
-                                   stdout=sys.stdout, stderr=sys.stderr, 
-                                   cwd=options['working_directory'])
-        if options['write_pid']:
-            pid_file_name = os.path.join(options['working_directory'],
-                                         options['job_type'] + '.auto.pid')
-            util.write_file(pid_file_name, str(process.pid))
-        process.wait()
-        sys.stdout.flush()
-        if options['write_pid']:
-            util.delete_pid_file(pid_file_name)
-        print ''
+        with (gzip.open(full_reference_file, 'r') as zipped_reference,
+              open(full_reference_file[:-3], 'w') as unzipped_reference):
+            unzipped_reference.writelines(zipped_reference)
 
-    elif full_reference_file.endswith('.gz') and os.path.isfile(full_reference_file):
-        print '\nSelected Reference File: %s is Zipped.' % full_reference_file
-        print 'Unzipping...'
+        print ('Unzipping Complete. Setting Reference File to '
+               +'Unzipped File: %s' full_reference_file[:-3])
         print ''
-        sys.stdout.flush()       
-        process = subprocess.Popen(['gunzip', full_reference_file], 
-                                   stdout=sys.stdout, stderr=sys.stderr, 
-                                   cwd=options['working_directory'])
-        if options['write_pid']:
-            pid_file_name = os.path.join(options['working_directory'],
-                                         options['job_type'] + '.auto.pid')
-            util.write_file(pid_file_name, str(process.pid))
-        process.wait()
-        sys.stdout.flush()
-        if options['write_pid']:
-            util.delete_pid_file(pid_file_name)
-        print ''
+        full_reference_file = full_reference_file[:-3]
+
                                  
     #Check that Input File Exists
     if not os.path.isfile(full_input_file):
@@ -466,8 +449,9 @@ def run(options):
     else:
         print 'Using Input File: %s' % full_input_file 
         working_input_file = full_input_file
-        print 'Input File Has %i Detected Query Sequences.' % util.FASTA_all(working_input_file)
-
+        print ('Input File Has %i ' % util.count_FASTA_all(working_input_file) +
+               ' Detected Query Sequences.') 
+               
     if options['reference_type'] in REFERENCE_TYPES:
         print 'Reference Type: %s (%s) Selected.' % (options['reference_type'], 
                                                      REFERENCE_TYPES[options['reference_type']])
@@ -563,7 +547,7 @@ def run(options):
     print ''
     print 'Blast Completed with Out File: %s' % options['blast_result_file']
     print ''
-    #analyze(options)
+    analyze(options)
     print ''
     print 'Annotation Complete'
 
@@ -703,6 +687,12 @@ def analyze(options):
     db = Annotation_Database()
     analysis += print_return(['Beginning Annotation...', ''])
 
+    #Read # of Sequences in Input File
+    input_sequence_count = util.count_FASTA_all(full_input_file)
+
+    analysis += print_return(['Total Sequences in input file %s:' % full_input_file
+                              + ' %i ' % input_sequence_count, ''])
+
     #Read # of Lines in File
     with open(full_blast_file) as blast_file_object:
         for total_lines, line in enumerate(blast_file_object, start=1):
@@ -718,6 +708,7 @@ def analyze(options):
     NUM_PRINTS = 1000
     print_counter_threshold = total_lines/NUM_PRINTS
 
+    db_len = 0
     for (line_number, line) in enumerate(blast_file_object, start=1):
         print_counter += 1
         if line.startswith('#'):
@@ -767,6 +758,7 @@ def analyze(options):
                                   + ' with %i Total Matches Written.' % record_count, ''])
 
     if name_map_file:
+        input_sequence_count = 0
         analysis += print_return('Reading Provided Name Map: %s' % full_name_map)
         name_map = Name_Map(full_name_map)
         analysis += print_return('Remapping Sequence Names to Name Map...')
@@ -826,8 +818,16 @@ def analyze(options):
         analysis += print_return(['%i Sequences' % annotation_count
                                   + ' with %i Total Matches Written.' % record_count, ''])
 
-        headers = ['Analys.', 'Cutoff', 'Seqs.', 'Records', 'Remapd.']
-        data_grid = ['Annot.', threshold, final_seqs, final_records, bool(name_map_file)]
+        if input_sequence_count:
+            formatted_input_sequence_count = str(input_sequence_count)
+            percent = util.percent_string(final_seqs, input_sequence_count)
+        else:
+            formatted_input_sequence_count = '-'
+            percent = 'N/A%'
+
+        headers = ['Analys.', 'Cutoff', 'TotSqs.', 'AnnSqs.', 'Percent', 'TotAnn.', 'Remapd.']
+        data_grid = ['Annot.', threshold, formatted_input_sequence_count, final_seqs, 
+                     percent, final_records, bool(name_map_file)]
         formatted_data = [str(x) for x in data_grid]
     
         report_dict = dict(zip(headers, formatted_data))

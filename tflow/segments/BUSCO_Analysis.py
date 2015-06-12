@@ -269,24 +269,16 @@ def run(options):
             print_exit([('Selected BUSCO Type: %s Not Available.' % BUSCO_Type),
                        'Please Select from Types:', ', '.join(BUSCO_FILES.keys())]) 
 
-    #If Selected BUSCO File is Zipped, Unzip it
-    if os.path.isfile(full_BUSCO_file_name +'.gz'):
+    #If Selected BUSCO File Not Yet Unzipped, Unzip it
+    if not os.path.isfile(full_BUSCO_file_name) and os.path.isfile(full_BUSCO_file_name +'.gz'):
         print ('\nSelected BUSCO File: %s' % full_BUSCO_file_name
                + 'Found in Zipped Format: %s' % full_BUSCO_file_name + '.gz')
         print 'Unzipping...'
         print ''
         sys.stdout.flush()       
-        process = subprocess.Popen(['gunzip', full_BUSCO_file_name +'.gz'], stdout=sys.stdout, 
-                                   stderr=sys.stderr, cwd=options['working_directory'])
-        if options['write_pid']:
-            pid_file_name = os.path.join(options['working_directory'],
-                                         options['job_type'] + '.auto.pid')
-            write_file(pid_file_name, str(process.pid))
-        process.wait()
-        sys.stdout.flush()
-        if options['write_pid']:
-            delete_pid_file(pid_file_name)
-        print ''
+        with gzip.open(full_BUSCO_file_name + '.gz', 'r') as zipped_BUSCO, \
+             open(full_BUSCO_file_name, 'w') as unzipped_BUSCO:
+            unzipped_BUSCO.writelines(zipped_BUSCO)
 
     #Ensure Provided/Selected BUSCO File Exists
     if os.path.isfile(full_BUSCO_file_name):

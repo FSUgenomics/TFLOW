@@ -9,6 +9,8 @@
 import subprocess
 import os.path
 import sys
+import shutil
+import gzip
 
 if __name__ == "__main__" and __package__ is None:
     sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../../'))
@@ -22,9 +24,9 @@ from .. import util
 JOB_TYPE = 'Package'
 PROGRAM_URL = None
 SEGMENT_FOR_VERSION = '0.9'
-COMMAND_LIST = ['gzip']
-COMMAND = ' '.join(COMMAND_LIST)
-TEST_COMMAND = '-h'
+#COMMAND_LIST = ['gzip']
+#COMMAND = ' '.join(COMMAND_LIST)
+#TEST_COMMAND = '-h'
 OUT_FILE = JOB_TYPE + '.out'
 MILESTONES = ['Packaging Final Sequence Output',
               'Sequence File Packaging Complete',
@@ -37,16 +39,15 @@ FAILURE_FLAGS = ['Exiting Early...',
 
 DEFAULT_SETTINGS = {'packaged_file_name':'Final_Assembly.fa',
                     #TFLOW Settings
-                    'command_list':COMMAND_LIST,
-                    'test_command':TEST_COMMAND,
+                    #'command_list':COMMAND_LIST,
+                    #'test_command':TEST_COMMAND,
                     'program_URL':PROGRAM_URL,
                     'segment_for_version':SEGMENT_FOR_VERSION,
                     #TFLOW Writing Defaults, Used if Global Not Set
-                    'write_command':True,
+                    #'write_command':True,
                     }
                     
-REQUIRED_SETTINGS = ['out_file', 'command_list', 'write_command', 'working_directory',
-                      'packaged_file_name']
+REQUIRED_SETTINGS = ['out_file', 'working_directory', 'packaged_file_name']
 
 class Parser(OutputParser):
     def set_local_defaults(self):
@@ -72,9 +73,7 @@ def read(options):
     parser.read_or_notify()
 
 def stop(options):
-    job_pid_file = os.path.join(options['working_directory'],
-                                JOB_TYPE + '.auto.pid')
-    stop_TFLOW_process(job_pid_file, JOB_TYPE)
+    print '    Job Stopping Not Applicable'
 
 def clean(options):
     out_files = [options['packaged_file_name'], options['packaged_file_name']+'.gz']
@@ -84,19 +83,12 @@ def clean(options):
                                 confirm=options['confirm'], out_files=out_files)
 
 def test(options, silent=False):
-    try:
-        output = subprocess.check_output(options['command_list'] + [options['test_command']])
-        if silent:
-            return True
-        else:
-            print ' -- %s Found!' % JOB_TYPE
-    
-    except OSError as error:
-        if silent:
-            return False
-        print '%s Cannot Be Found With Shell Command: "%s"' % (JOB_TYPE, options['command'])
-        output = 'Error Number: %s\nError Text:\n%s' % (str(error.errno), error.strerror)
-    return output
+    if silent:
+        return True
+    else:
+        print ' -- %s Found!' % JOB_TYPE
+        output = 'File Location: %s' % os.path.realpath(__file__)
+        return output
 
 def analyze(options):
     print 'No Analysis Applicable to %s Segment.' % JOB_TYPE
@@ -168,65 +160,27 @@ def run(options):
         print '    ' + full_output_file
         print ''
 
-        input_file_object = open(full_input_file, 'r')
-        output_file_object = open(full_output_file, 'w')
-        for line in input_file_object:
-            output_file_object.write(line)
-        input_file_object.close()
-        output_file_object.close()
+        shutil.copyfile(full_input_file, full_output_file)
 
-    print 'Zipping Final Result Sequence File:'
-    print '    ' + full_output_file
-    print ''
-
-    zip_file_name = full_output_file + '.gz'
-    command_list = list(options['command_list']) + ['-c', full_output_file]
-    equivalent_command_list = list(command_list) + ['>', zip_file_name]
-    command = ' '.join(equivalent_command_list)
-
-    if options['write_command']:
-        command_file = os.path.join(options['project_directory'],
-                                    options['job_type'] + '.auto.sh')
-        write_file(command_file, '#!/bin/sh\n' +command)
-
-    print 'Running Command:\n    ' + command
-    print ''
-
-    sys.stdout.flush()
-    zip_file = open(zip_file_name, 'w')
-
-    try:
-        process = subprocess.Popen(command_list, stdout=zip_file, stderr=sys.stderr, 
-                                   cwd=options['working_directory'])
-        if options['write_pid']:
-            pid_file_name = os.path.join(options['working_directory'],
-                                         options['job_type'] + '.auto.pid')
-            write_file(pid_file_name, str(process.pid))
-
-        process.wait()
-        zip_file.close()
+    if not full_output_file.endswith('.gz'):
+        print 'Zipping Final Result Sequence File:'
+        print '    ' + full_output_file
+        print ''
         sys.stdout.flush()
 
-        if options['write_pid']:
-            delete_pid_file(pid_file_name)
-
-    except KeyboardInterrupt:
-            if __name__ != '__main__' and options['is_pipe']:
-                sys.stdout, sys.stderr = terminal_out, terminal_error
-                out_file_stream.close()
-            print ''
-            print 'Killing Package Process'
-            process.kill()
-            zip_file.close()
-            raise
-
-
+        zip_file_name = full_output_file + '.gz'
+    
+        with open(full_output_file, 'r') as output_file_object, \
+             gzip.open(zip_file_name, 'w') as zip_file_object:
+            for line in output_file_object:
+                zip_file_object.write(line)
                                
-    if os.path.isfile(zip_file_name):
-        print 'Zipped Sequence File: %s Created Successfully.' % zip_file_name
-        print ''
-    else:                              
-        print_exit('Expected Output Zipped Sequence File: %s Cannot Be Found.' % zip_file_name)
+        if os.path.isfile(zip_file_name):
+            print 'Zipped Sequence File: %s Created Successfully.' % zip_file_name
+            print ''
+        else:                              
+            print_exit('Expected Output Zipped Sequence File: %s ' % zip_file_name
+                       + 'Cannot Be Found.' )
                                    
     print 'Sequence File Packaging Complete'
 

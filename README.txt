@@ -1,41 +1,6 @@
 
 Welcome to TFLOW, a command-line pipeline for de novo transcriptome assembly and analysis.
 
- --- Get Me Started ---
-Optional: Add TFLOW dir to your path with: "export PATH=[TFLOW_DIR]:$PATH"
-Optional: Add TFLOW dir to your python path with: "export PYTHONPATH=[TFLOW_DIR]:$PYTHONPATH"
-(Replacing [TFLOW_DIR] with absolute path to TFLOW Directory Location)
-
-Run: "[TFLOW_DIR]/test_TFLOW_setup.sh"
-(Equivalent to "[TFLOW_DIR]/tflow.sh test -t Test_Pipe")
-
-Then, for each component that can't be found:
-    Install (if not already)
-    in TFLOW_Local_Settings.dat:
-        set [UTILITY]_LOCATION variable with executable conatining folder
-        OR: set [UTILITY]_EXEC variable of full executable path
-
-When every component (that you care about) reports "Found!":
-    Create a project directory
-    Copy desired pipe options file template to project directory:
-        Ex: Copy options.dat.Trinity_Pipe_Template to My_Project/options.dat)
-    Set mandatory and suggested settings in options file:
-        Ex: is_paired_reads <True/False>
-            label           <tissue_name>
-            BUSCO_type      <vertebrata>
-    Run:
-        Ex: "[TFLOW_DIR]/tflow.sh run --raw_reads MyData/*.gz"
-        OR: "[TFLOW_DIR]/tflow.sh run --raw_left_reads MyData/*left_reads*.gz --raw_right_reads MyData/*right_reads*.gz"
-	(Template Job Submission Scripts Included for Each Pipe Type)
-
-    Then, See what's going on in the job by running:
-        "[TFLOW_DIR]/tflow.sh track"
-
-    For Help, Use:
-        "[TFLOW_DIR]/tflow.sh run -h"
-        OR: "[TFLOW_DIR]/tflow.sh run --help"
-
-
  --- Design ---
 The TFLOW pipeline is designed with several key features in mind:
     Easy accessability of assembly utilities
@@ -45,6 +10,62 @@ The TFLOW pipeline is designed with several key features in mind:
 
     TFLOW is built on the Python2.7 language and thus requires Python2.7 as a dependency.
     Individual external components are required depending on the pipe utilized.
+
+
+ --- Get Me Started ---
+
+  - Setup - 
+    1. Download and Unpack TFLOW to a directory of your choice.
+        Ex: unzip ~/v0.9.2.zip (creates ~/TFLOW-0.9.1)
+        
+    2. Run test_TFLOW_setup.sh
+        Ex: ~/TFLOW-0.9.1/test_TFLOW_setup.sh
+            (equivalent to ~/TFLOW-0.9.1/tflow.sh test -t Test_Pipe")
+
+    3. Then, for each component that can't be found:
+        A. Install that component (if not already installed)
+        B. Tell TFLOW where it is by editing TFLOW_Local_Settings.dat: 
+           (Ex: vi ~/TFLOW-0.9.1/TFLOW_Local_Settings.dat)
+               set [UTILITY]_LOCATION variable with executable conatining folder
+           OR: set [UTILITY]_EXEC variable of full executable path
+        C. When every component (that you care about) reports "Found!" you're ready for a project!
+
+  - Start a Project - 
+    1. Create a project directory
+       Ex: mkdir ~/My_Project
+
+    2. Copy desired pipe options file template to project directory:
+       Ex: cp ~/TFLOW-0.9.1/Templates/options.dat.Trinity_Pipe_Template ~/My_Project/options.dat
+
+    3. Set mandatory and suggested settings in options file:
+       Ex: vi ~/My_Project/options.dat
+           is_paired_reads <True/False>
+           label           <tissue_name>
+           BUSCO_type      <vertebrata>
+
+    4(a). Run TFLOW:
+        Ex: ~/TFLOW-0.9.1/tflow.sh run --raw_reads ~/My_Data/*.gz"
+        "[TFLOW_DIR]/tflow.sh run --raw_left_reads ~/My_Data/*left_reads*.gz --raw_right_reads ~/My_Data/*right_reads*.gz"
+    	    (template job submission scripts are included for each pipe type)
+	 
+    4(b). Track the Running Project:
+        If you started TFLOW in the background (with "&" at the end),
+            see what's going on in the job by running TFLOW in track mode.
+            Ex:  cd ~/My_Project/
+                 ~/TFLOW-0.9.1/tflow.sh track
+
+  - Help - 
+
+    For help, use the "-h" or "--help" flags.
+        Ex: ~/TFLOW-0.9.1/tflow.sh run -h
+        OR: ~/TFLOW-0.9.1/tflow.sh run --help
+
+
+  - Advanced Use -
+    For convience, you can:
+        Add TFLOW dir to your system path with: "export PATH=[TFLOW_DIR]:$PATH"  
+        Add TFLOW dir to your python path with: "export PYTHONPATH=[TFLOW_DIR]:$PYTHONPATH"
+            (Replacing [TFLOW_DIR] with absolute path to TFLOW Directory Location)
 
 
  --- Operation ---
@@ -143,11 +164,14 @@ The priority hierarchy of options is given by:
 
 --- Version History ---
 2015-??-??, V.0.9.2
+    Increased README Readability and added setup command examples.
+    Added Termination of Tracking on Process Failure
+    Added Internal Zipping and Unzipping of ".gz" Compressed Files
     Added "details" Mode to fasta_manip.py for Shortest/Longest Read Identification
     Added CSV outputting to Summary module
     Added prototype "reset" Mode for Deleting All Identified Segment Output Files
     Added prototype "clean" Mode for Deleting Unnecessary Segment Output Files
-    Added "stop" Mode for Stopping Running Pipes and Segments
+    Added "stop" Mode for Stopping Background Running Pipes, Segments, and External Components
     Bug Fixes
 
 2015-05-12, V.0.9.1

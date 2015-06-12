@@ -704,7 +704,8 @@ class AnnotationMap():
             if line.startswith('>'):
                 splitLine = line.lstrip('>').split()
                 if len(splitLine) < 2:
-                    raise Exception('Line has insufficent information:\n' + line)
+                    raise Exception('Line in file: %s ' % fileName
+                                    + 'has insufficent information:\n' + line)
                 self.annotations[splitLine[0]] = ' '.join(splitLine[1:])                            
         inFile.close()
     
@@ -748,14 +749,22 @@ Annotation_Map = AnnotationMap
 #     fileName:  String, Name of file source for match (eg. "ncbi.fasta")    
 
 # Default Parser function for Name Map Class
-def DefaultMapParse(inputStr):
+def defaultMapParse(inputStr):
     inputStr = inputStr.strip()
     splitString = inputStr.split('|')
     return (splitString[0].lstrip('>').strip(), splitString[1].strip())
-default_map_parse = DefaultMapParse
+
+# Reversed Parser function for Name Map Class
+def reversedMapParse(inputStr):
+    inputStr = inputStr.strip()
+    splitString = inputStr.split('|')
+    return (splitString[1].strip(), splitString[0].lstrip('>').strip())
+
+
+default_map_parse = defaultMapParse
 
 class NameMap():
-    def __init__(self, fileName=None, parser=DefaultMapParse):  
+    def __init__(self, fileName=None, parser=defaultMapParse):  
         self.nameMap = {}
         self.fileName = None
         self.parser = parser

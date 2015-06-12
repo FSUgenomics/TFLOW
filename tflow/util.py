@@ -10,6 +10,7 @@ import sys
 import os
 import subprocess
 import signal
+import gzip
 from time import sleep
 
 # --- Global Constants ---
@@ -151,7 +152,8 @@ REPORT_TYPES = {'sequence':'SEQUENCE FILE REPORT', 'recapture':'GENE RECAPTURE R
 SEQUENCE_REPORT_HEADERS = ['Count', 'Len', 'Av.Len', 'SRange', 'ERange', 'Median', 'N50']
 RECAPTURE_REPORT_HEADERS = ['Analys.', 'Cutoff', 'Expect.', 'Found', 'Missing', 'Total', 
                             'Percent']
-ANNOTATION_REPORT_HEADERS = ['Analys.', 'Cutoff', 'Seqs.', 'Records', 'Remapd.'] 
+ANNOTATION_REPORT_HEADERS = ['Analys.', 'Cutoff', 'TotSqs.', 'AnnSqs.', 'Percent', 'TotAnn.', 
+                             'Remapd.'] 
                             
 
 def write_report(file_name, report, separator=SEQUENCE_REPORT_SEPARATOR, aux_reports=[]):
@@ -199,6 +201,7 @@ def write_report(file_name, report, separator=SEQUENCE_REPORT_SEPARATOR, aux_rep
         f.write('\nAdditional Information:\n')
         f.write(separator.join(additional_headers) + '\n')
         for report in reports:
+            aux_list = []
             for header in additional_headers:
                 if header in report:
                     aux_list.append(report[header])
@@ -333,6 +336,12 @@ def get_file_settings():
 
 
 # --- File Manipulation Functions ---
+def ensure_file_exists(file_name, descriptor='File', loud=False):
+    if not os.path.isfile(file_name):
+        print_exit('%s : %s Does Not Exist.' % (descriptor, file_name))
+    if loud:
+        print '%s : %s Found.' % (descriptor, file_name)
+
 def delete_pid_file(pid_file_name):
     if 'pid' not in pid_file_name:
         print_exit('Trying To Delete Non-PID File: %s' % pid_file_name)
@@ -458,8 +467,8 @@ def clean_TFLOW_auto_files(job_type, project_dir, working_dir, remove_outfiles=T
             print 'Complete.'
         else:
             print 'Would Clean Files:'
-            print_pretty(found_files)
-            print 'Rerun with --confirm flag to perform cleaning.'
+            print_pretty(found_files + ['Re-Run with --confirm flag to perform cleaning.'])
+
     else:
         print 'No Files Found to Clean.'
 
@@ -546,12 +555,20 @@ def write_settings(options, out_file, message=None):
 
 # --- Sequence File Utilities ---
 def count_FASTA(file_name):
-    return int((subprocess.check_output('grep -c "^>" %s' % file_name, 
-                                        shell=True)).strip())
+    count = 0
+    with open(file_name, 'r') as file_object:
+        for line in file_object:
+            if line.startswith('>'):
+                count += 1
+    return count
 
 def count_FASTA_GZ(file_name):
-    return int((subprocess.check_output('zcat %s | grep -c "^>"' % file_name, 
-                                        shell=True)).strip())
+    count = 0
+    with gzip.open(file_name, 'r') as file_object:
+        for line in file_object:
+            if line.startswith('>'):
+                count += 1
+    return count
 
 def count_FASTA_all(file_name):
     if is_FASTA(file_name):
@@ -561,12 +578,16 @@ def count_FASTA_all(file_name):
     return 0
 
 def count_FASTQ(file_name):
-    return (int((subprocess.check_output('wc -l %s' % file_name, 
-                                         shell=True)).split()[0]) / 4)
+    with open(file_name, 'r') as file_object:
+        for line_number, line in enumerate(file_object, start=1):
+            pass
+    return (line_number/4)
 
 def count_FASTQ_GZ(file_name):
-    return (int((subprocess.check_output('zcat %s | wc -l' % file_name, 
-                                         shell=True)).split()[0]) / 4)
+    with gzip.open(file_name, 'r') as file_object:
+        for line_number, line in enumerate(file_object, start=1):
+            pass
+    return (line_number/4)
 
 def count_FASTQ_all(file_name):
     if is_FASTQ(file_name):
@@ -659,16 +680,34 @@ def count_sequences(contents, print_results=True, column_width=50):
         if count != None:
             if print_results:
                 print file_name.ljust(column_width), count
+                sys.stdout.flush()
             counts.append((file_name, count))
             total_count += count
 
     if print_results and len(counts) > 1:
         print 'Total'.ljust(column_width), total_count
+        sys.stdout.flush()
     counts.append(('Total', total_count))
 
     return counts
 
+# --- Depreciated Shell-Based Sequence Counting ---
 
+def shell_count_FASTA(file_name):
+    return int(subprocess.check_output('grep -c "^>" %s' % file_name, 
+                                       shell=True).strip())
+
+def shell_count_FASTA_GZ(file_name):
+    return int((subprocess.check_output('zcat %s | grep -c "^>"' % file_name, 
+                                        shell=True)).strip())
+
+def shell_count_FASTQ(file_name):
+    return (int((subprocess.check_output('wc -l %s' % file_name, 
+                                         shell=True)).split()[0]) / 4)
+
+def shell_count_FASTQ_GZ(file_name):
+    return (int((subprocess.check_output('zcat %s | wc -l' % file_name, 
+                                         shell=True)).split()[0]) / 4)
 
 # --- Type Conversion Utilities ---
 def string_to_boolean(string):

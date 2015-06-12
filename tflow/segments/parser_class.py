@@ -149,14 +149,28 @@ class OutputParser():
     #Returns True if Not Yet Terminated
     def check(self, all_print=True):
         still_running = True
+        failure = False
         if self.output_exists():
-            out_file = open(self.out_file, 'r')
-            output = out_file.readlines()
-            out_file.close()
+            with open(self.out_file, 'r') as out_file:
+                index = 0
+                output_enum = enumerate(out_file)
+                if index < (self.last_line_index - 2):
+                    for index, line in output_enum:
+                        if index >= (self.last_line_index - 2):
+                            break
+                output = {}
+                for index, line in output_enum:
+                    #print index, line
+                    output[index] = line
+                
+                last_output_index = index
+            #output = out_file.readlines()
         else:
             print_except('Output File: %s Not Found!' % self.out_file)
 
-        for line in output[self.last_line_index:]:
+        #for line in output[self.last_line_index:]:
+        for i in range(self.last_line_index, last_output_index):
+            line = output[i]
             if '\r' in line:
                 print line.split('\r')[-1].rstrip()
             else:
@@ -164,7 +178,11 @@ class OutputParser():
  
             if self.check_terminal(line):
                 still_running = False
-                     
+
+            if self.check_failure(line):
+                still_running = False
+                failure = True
+
             if self.milestones[self.next_milestone_index] in line and still_running:
                 self.milestone = self.milestones[self.next_milestone_index]
                 self.next_milestone_index += 1
@@ -175,5 +193,9 @@ class OutputParser():
             self.last_line = line.strip()
             self.last_line_index += 1
                 
+        if failure:
+            print_exit(['', '%s Job has failed.' % self.job_type, ' --- ', 
+                        '(To Retry, Delete Output File: %s )' % self.out_file, '', ''], 0)
+
         return still_running
 
