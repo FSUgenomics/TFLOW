@@ -3,19 +3,19 @@
 Welcome to TFLOW, a command-line pipeline for de novo transcriptome assembly and analysis.
 
  --- Design ---
+ 
 The TFLOW pipeline is designed with several key features in mind:
     Easy accessability of assembly utilities
     A smooth "Flow" of input/output data from one tool to the next
     Automated analysis of results
     Modular addition of new tools
-
     TFLOW is built on the Python2.7 language and thus requires Python2.7 as a dependency.
     Individual external components are required depending on the pipe utilized.
 
 
  --- Get Me Started ---
 
-  - Setup - 
+  - Setup
     1. Download and Unpack TFLOW to a directory of your choice.
         Ex: unzip ~/v0.9.2.zip (creates ~/TFLOW-0.9.1)
         
@@ -31,7 +31,7 @@ The TFLOW pipeline is designed with several key features in mind:
            OR: set [UTILITY]_EXEC variable of full executable path
         C. When every component (that you care about) reports "Found!" you're ready for a project!
 
-  - Start a Project - 
+  - Start a Project
     1. Create a project directory
        Ex: mkdir ~/My_Project
 
@@ -44,25 +44,26 @@ The TFLOW pipeline is designed with several key features in mind:
            label           <tissue_name>
            BUSCO_type      <vertebrata>
 
-    4(a). Run TFLOW:
+    4. Run TFLOW:
         Ex: ~/TFLOW-0.9.1/tflow.sh run --raw_reads ~/My_Data/*.gz"
         "[TFLOW_DIR]/tflow.sh run --raw_left_reads ~/My_Data/*left_reads*.gz --raw_right_reads ~/My_Data/*right_reads*.gz"
     	    (template job submission scripts are included for each pipe type)
 	 
-    4(b). Track the Running Project:
+    5. Track the Running Project:
         If you started TFLOW in the background (with "&" at the end),
             see what's going on in the job by running TFLOW in track mode.
             Ex:  cd ~/My_Project/
                  ~/TFLOW-0.9.1/tflow.sh track
 
-  - Help - 
+  - Help
 
     For help, use the "-h" or "--help" flags.
         Ex: ~/TFLOW-0.9.1/tflow.sh run -h
         OR: ~/TFLOW-0.9.1/tflow.sh run --help
 
 
-  - Advanced Use -
+  - Advanced Use 
+  
     For convience, you can:
         Add TFLOW dir to your system path with: "export PATH=[TFLOW_DIR]:$PATH"  
         Add TFLOW dir to your python path with: "export PYTHONPATH=[TFLOW_DIR]:$PYTHONPATH"
@@ -70,8 +71,10 @@ The TFLOW pipeline is designed with several key features in mind:
 
 
  --- Operation ---
+ 
 TFLOW 0.9.2 has 9 modes:
-    run	      	    Run Job/Pipe
+
+    run	    Run Job/Pipe
     track	    Track Job/Pipe
     analyze	    Analyze Job/Pipe
     read 	    Read Output of Job/Pipe
@@ -79,28 +82,31 @@ TFLOW 0.9.2 has 9 modes:
     stop	    Stop Running Job/Pipe
     clean	    Cleanup (Most) Standard Job/Pipe Files (Beta)
     reset	    Reset (Almost) All Job/Pipe Files Including Output (Beta)
-    settings	    Print Current TFLOW Settings and Exit
+    settings    Print Current TFLOW Settings and Exit
 
 TFLOW 0.9.2 has 5 Supported Pipes:
+
     Trinity_Pipe         Trim Reads, Trinity-Assemble, CAP3-Assemble, CEGMA Analysis, 
-                             and BUSCO Analysis
+                         and BUSCO Analysis
     Trimmed_Trinity_Pipe Trinity-Assemble, CAP3-Assemble, CEGMA Analysis, and BUSCO Analysis
-    CAP3_Pipe	 	 CAP3-Assemble, CEGMA Analysis, and BUSCO Analysis
-    Analysis_Pipe	 Stat_Analysis, CEGMA Analysis and BUSCO Analysis
-    Test_Pipe		 Non-Functional Pipe for Testing All Supported Segments
+    CAP3_Pipe	     CAP3-Assemble, CEGMA Analysis, and BUSCO Analysis
+    Analysis_Pipe        Stat_Analysis, CEGMA Analysis and BUSCO Analysis
+    Test_Pipe	     Non-Functional Pipe for Testing All Supported Segments
 
 TFLOW 0.9.2 has 8 Supported Pipes Segments:
+
     Make_Read_Lists (v0.9)   Simple Parser From Read Files to Read File Lists
     Trimmomatic (v0.32)      Read Trimming Utilityad Output of Job/Pipe
     Trinity (v20140717)      De-Novo Transcriptome Assembler
     CAP3                     Sequence Assembler
-    Package (v0.9)  	     Copy and Zip Final Sequence File Result
+    Package (v0.9)  	 Copy and Zip Final Sequence File Result
     Stat_Analysis (v0.9)     Perform Statistical Analysis on FASTA File Sequences
     CEGMA_Analysis (v2.2.29) Core Eukaryotic Gene Recapture Analysis via NCBI Blast
     BUSCO_Analysis (v2.2.29) Benchmarking Gene Recapture Analysis via NCBI Blast
-    Summary (v0.9)  	     Summarize Pipe Results
+    Summary (v0.9)  	 Summarize Pipe Results
 
  --- External Components ---
+ 
 Components used for Pipe Segments. Newer versions of components are ideally also supported.
 
     - Trimmomatic -
@@ -117,18 +123,18 @@ Components used for Pipe Segments. Newer versions of components are ideally also
     URL:      http://trinityrnaseq.github.io/
     Citation: Full-length transcriptome assembly from RNA-Seq data without a reference genome.
               Grabherr MG, Haas BJ, Yassour M, Levin JZ, Thompson DA, Amit I, Adiconis X, Fan L,
-	      Raychowdhury R, Zeng Q, Chen Z, Mauceli E, Hacohen N, Gnirke A, Rhind N, di Palma F,
-	      Birren BW, Nusbaum C, Lindblad-Toh K, Friedman N, Regev A.
-	      Nature Biotechnology 29, 644–652 (2011)
-	      Paper: http://www.nature.com/nbt/journal/v29/n7/full/nbt.1883.html
-	      Code:  http://trinityrnaseq.sf.net
+	          Raychowdhury R, Zeng Q, Chen Z, Mauceli E, Hacohen N, Gnirke A, Rhind N, di Palma F,
+	          Birren BW, Nusbaum C, Lindblad-Toh K, Friedman N, Regev A.
+	          Nature Biotechnology 29, 644–652 (2011)
+	          Paper: http://www.nature.com/nbt/journal/v29/n7/full/nbt.1883.html
+	          Code:  http://trinityrnaseq.sf.net
 
     - CAP3 -
     DNA Sequence Assembler
     Version:  N/A
     URL:      http://seq.cs.iastate.edu/cap3.html
     Citation: Huang, X. and Madan, A. (1999) CAP3: A DNA sequence assembly program. 
-    	      Genome Res., 9, 868-877.
+    	  Genome Res., 9, 868-877.
 
     - NCBI BLAST -
     Sequence Comparison Tool
@@ -140,6 +146,7 @@ Components used for Pipe Segments. Newer versions of components are ideally also
 
 
  --- Benchmarking Datasets ---
+ 
 Datasets used for Gene Recapture Analysis.
 
     - CEGMA Sequence Database -
@@ -159,12 +166,15 @@ Datasets used for Gene Recapture Analysis.
 
 
  --- Options ---
+ 
 The priority hierarchy of options is given by:
     Pipe Settings File > Command Line > Options File > Global Defaults > Segment Defaults  
 
 
 --- Version History ---
+
 2015-??-??, V.0.9.2
+
     Increased README Readability and added setup command examples.
     Added Termination of Tracking on Process Failure
     Added Internal Zipping and Unzipping of ".gz" Compressed Files
@@ -176,6 +186,7 @@ The priority hierarchy of options is given by:
     Bug Fixes
 
 2015-05-12, V.0.9.1
+
     Added Stat_Analysis Segment
     Added Package Segment
     Added Test_Pipe Testing Pipeline
@@ -192,4 +203,5 @@ The priority hierarchy of options is given by:
     Minor Bug Fixes
 
 2015-04-20, V.0.9.0
+
     Initial Beta Release
