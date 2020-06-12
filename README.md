@@ -1,3 +1,4 @@
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3817475.svg)](https://doi.org/10.5281/zenodo.3817475)
 
 Welcome to TFLOW, a command-line pipeline for de novo transcriptome assembly and analysis.
 
